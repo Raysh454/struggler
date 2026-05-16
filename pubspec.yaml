@@ -1,0 +1,26 @@
+name: struggler
+description: "STRUGGLER: The Architect's Trial - A 2D platformer powered by AI"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flame: ^1.37.0
+  flutter:
+    sdk: flutter
+  google_generative_ai: ^0.4.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/audio/
+    - assets/levels/
+    - assets/characters/player/
