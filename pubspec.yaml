@@ -20,7 +20,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/
-    - assets/audio/
-    - assets/levels/
-    - assets/characters/player/
+    - assets/images/atlas/
+    - assets/images/blocks/RockyLevel/
+    - assets/images/blocks/Collectible/

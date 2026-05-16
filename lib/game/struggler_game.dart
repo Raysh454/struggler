@@ -3,13 +3,15 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
-import 'dart:ui';
 
 import '../models/player_state.dart';
 import '../models/game_state.dart';
 import 'components/player.dart';
 import 'level/level_manager.dart';
+import 'level/level_theme.dart';
 import 'hud/game_hud.dart';
+import 'package:flame/parallax.dart';
+import 'package:flutter/widgets.dart';
 
 /// Main game class. Manages the game world, camera, and state.
 class StruggleGame extends FlameGame
@@ -53,18 +55,42 @@ class StruggleGame extends FlameGame
     // Get level data (test level for now, AI-generated later)
     final levelData = LevelManager.createTestLevel(levelId);
 
+    // Pick a random theme for the level
+    final themeType = _random.nextBool() ? ThemeType.lightRocks : ThemeType.darkRocks;
+    final theme = await LevelTheme.load(this, themeType);
+
     // Build level components
-    final components = LevelManager.buildLevel(levelData);
+    final components = await LevelManager.buildLevel(this, levelData, theme);
     for (final component in components) {
       world.add(component);
     }
+
+    // Add Parallax Background to camera backdrop (stays static on screen)
+    camera.backdrop.children.whereType<ParallaxComponent>().forEach((c) => c.removeFromParent());
+    world.children.whereType<ParallaxComponent>().forEach((c) => c.removeFromParent());
+    
+    // We assume background1..3 exist in the folder for RockyLevel
+    final bgComponent = await loadParallaxComponent(
+      theme.backgroundAssets,
+      baseVelocity: Vector2(0, 0),
+      velocityMultiplierDelta: Vector2(1.5, 1.0),
+      repeat: ImageRepeat.repeatX,
+      fill: LayerFill.height, // Scale height to fit screen so it doesn't cut off on portrait devices
+      alignment: Alignment.bottomCenter, // Anchor mountains to the bottom of the screen
+    );
+    bgComponent.size = canvasSize; 
+    camera.backdrop.add(bgComponent);
+    
+    // Store reference to update its parallax offset based on camera position later
+    _bgComponent = bgComponent;
 
     // Spawn player
     final spawnPos = LevelManager.getSpawnPosition(levelData);
     player = Player(position: spawnPos);
     world.add(player);
 
-    // Set up camera to follow player
+    // Set up camera to follow player instantly at spawn
+    camera.viewfinder.position = spawnPos;
     camera.follow(player, maxSpeed: 300, horizontalOnly: false);
     camera.viewfinder.zoom = 2.0; // Zoom in for better visibility
 
@@ -80,9 +106,24 @@ class StruggleGame extends FlameGame
     gameState.startLevel();
   }
 
+  ParallaxComponent? _bgComponent;
+  
   @override
   void update(double dt) {
     super.update(dt);
+
+    // Keep parallax updated with camera position
+    if (_bgComponent != null) {
+      // Set the base velocity to match camera movement for the parallax effect.
+      // Parallax handles the scrolling internally when velocity is applied.
+      // Actually, since we're not moving the component, we just set the parallax offset!
+      // We can manually set the current offset, or just use the cameraX directly
+      // Flame Parallax offsets are usually set via baseVelocity, but we can set offset directly.
+      // Since baseVelocity updates position over dt, we can just map the camera pos to the baseVelocity 
+      // if we want it to move, OR we can just access the layers and update their offsets!
+      // Scale down the velocity so the background moves much slower than the foreground
+      _bgComponent!.parallax!.baseVelocity = Vector2(player.velocity.x * 0.1, 0);
+    }
 
     // Screen shake
     if (_shakeTimer > 0) {

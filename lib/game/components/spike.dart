@@ -1,14 +1,17 @@
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'dart:ui';
+import '../level/level_theme.dart';
 
 /// Spike hazard. Damages the player on contact. Can be on floors or walls.
 class Spike extends PositionComponent with CollisionCallbacks {
   final double damage;
+  final LevelTheme theme;
 
   Spike({
     required Vector2 position,
     required Vector2 size,
+    required this.theme,
     this.damage = 20.0,
   }) : super(position: position, size: size);
 
@@ -19,20 +22,18 @@ class Spike extends PositionComponent with CollisionCallbacks {
 
   @override
   void render(Canvas canvas) {
-    final paint = Paint()..color = const Color(0xFFB0B0B0);
-
-    // Draw triangle spikes across the width
-    final spikeWidth = size.y; // Each spike is as wide as the tile is tall
-    final count = (size.x / spikeWidth).ceil();
-    final actualWidth = size.x / count;
-
-    for (int i = 0; i < count; i++) {
-      final path = Path()
-        ..moveTo(i * actualWidth, size.y)
-        ..lineTo(i * actualWidth + actualWidth / 2, 0)
-        ..lineTo((i + 1) * actualWidth, size.y)
-        ..close();
-      canvas.drawPath(path, paint);
+    // We assume most spikes are on the floor unless they have a specific flag.
+    // For now, we'll use the Y position to guess, or just default to floor spikes.
+    final sprite = theme.floorSpikeSprite;
+    
+    // Tile the spike sprite across the width
+    const double spikeTileSize = 32.0;
+    for (double x = 0; x < size.x; x += spikeTileSize) {
+      sprite.render(
+        canvas,
+        position: Vector2(x, 0),
+        size: Vector2(spikeTileSize, size.y),
+      );
     }
   }
 }

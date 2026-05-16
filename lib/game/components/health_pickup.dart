@@ -3,22 +3,26 @@ import 'package:flame/components.dart';
 import 'dart:ui';
 import 'dart:math';
 
+import '../struggler_game.dart';
+
 /// Health pickup. Restores player health when collected.
-class HealthPickup extends PositionComponent with CollisionCallbacks {
+class HealthPickup extends PositionComponent with CollisionCallbacks, HasGameReference<StruggleGame> {
   final double healAmount;
   double _bobTimer = 0;
   bool collected = false;
+  late Sprite _sprite;
 
   HealthPickup({
     required Vector2 position,
     this.healAmount = 30.0,
   }) : super(
           position: position,
-          size: Vector2.all(24),
+          size: Vector2.all(10),
         );
 
   @override
   Future<void> onLoad() async {
+    _sprite = await game.loadSprite('blocks/Collectible/heart01.png');
     add(RectangleHitbox());
   }
 
@@ -34,25 +38,12 @@ class HealthPickup extends PositionComponent with CollisionCallbacks {
   void render(Canvas canvas) {
     if (collected) return;
 
-    // Green cross/plus symbol
-    final paint = Paint()..color = const Color(0xFF00FF88);
+    // Render the heart sprite
+    _sprite.render(canvas, size: size);
+
+    // Subtle green glow behind the heart
     final cx = size.x / 2;
     final cy = size.y / 2;
-    final armW = size.x * 0.2;
-    final armH = size.y * 0.6;
-
-    // Vertical bar of cross
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset(cx, cy), width: armW, height: armH),
-      paint,
-    );
-    // Horizontal bar of cross
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset(cx, cy), width: armH, height: armW),
-      paint,
-    );
-
-    // Glow
     canvas.drawCircle(
       Offset(cx, cy),
       size.x * 0.5,

@@ -1,7 +1,8 @@
+import 'dart:ui';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart' hide Block;
 import 'package:flutter/services.dart';
-import 'dart:ui';
+import '../asset_registry.dart';
 
 import '../components/block.dart';
 import '../components/lava.dart';
@@ -24,7 +25,7 @@ enum PlayerAnimationState {
 
 /// The Struggler — the player character.
 class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler, HasGameReference<StruggleGame> {
-  late final SpriteAnimationGroupComponent<PlayerAnimationState> _animationComponent;
+  SpriteAnimationGroupComponent<PlayerAnimationState>? _animationComponent;
   // --- Movement ---
   static const double moveSpeed = 200.0;
   static const double jumpForce = -400.0;
@@ -53,7 +54,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   // --- Combat ---
   bool _isAttacking = false;
   double _attackTimer = 0;
-  static const double attackDuration = 0.25;
+  static const double attackDuration = 0.28;
   static const double attackCooldown = 0.35;
   double _attackCooldownTimer = 0;
 
@@ -72,6 +73,11 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
   // --- Hurt flash ---
   double _hurtTimer = 0;
+  
+  // --- Death state ---
+  bool _isDead = false;
+  double _respawnTimer = 0;
+  static const double respawnDelay = 1.5;
 
   // --- Resolve visual ---
   bool get isIndomitable => game.playerState.isIndomitable;
@@ -86,58 +92,80 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   Future<void> onLoad() async {
     super.onLoad();
     
-    // Hitbox for the player (smaller than the visual sprite)
     add(RectangleHitbox());
 
-    // Load animations from the character sprite sheets
-    final idleAnim = await _loadAnimation('Idle.png', 8, 2);
-    final runAnim = await _loadAnimation('Run.png', 8, 2);
-    final jumpAnim = await _loadAnimation('Jump.png', 8, 2);
-    final attackAnim = await _loadAnimation('Attacks.png', 8, 8); // First 8 frames
-    final dodgeAnim = await _loadAnimation('Roll.png', 4, 2);
-    final hurtAnim = await _loadAnimation('Hurt.png', 3, 2);
-    final deathAnim = await _loadAnimation('Death.png', 4, 2);
+    try {
+      final idleAnim = await _loadAnimation('Idle.png', 8, 2);
+      final runAnim = await _loadAnimation('Run.png', 8, 2);
+      final jumpAnim = await _loadAnimation('Jump.png', 8, 2);
+      final attackAnim = await _loadAnimation('Attacks.png', 8, 8, stepTime: 0.035, loop: false);
+      final dodgeAnim = await _loadAnimation('Roll.png', 4, 2, stepTime: 0.05, loop: false);
+      final hurtAnim = await _loadAnimation('Hurt.png', 3, 2, stepTime: 0.1, loop: false);
+      final deathAnim = await _loadAnimation('Death.png', 4, 2, stepTime: 0.1, loop: false);
 
-    _animationComponent = SpriteAnimationGroupComponent<PlayerAnimationState>(
-      animations: {
-        PlayerAnimationState.idle: idleAnim,
-        PlayerAnimationState.run: runAnim,
-        PlayerAnimationState.jump: jumpAnim,
-        PlayerAnimationState.attack: attackAnim,
-        PlayerAnimationState.dodge: dodgeAnim,
-        PlayerAnimationState.hurt: hurtAnim,
-        PlayerAnimationState.death: deathAnim,
-      },
-      current: PlayerAnimationState.idle,
-      size: Vector2(128, 64),
-      position: Vector2(size.x / 2, size.y),
-      anchor: Anchor.bottomCenter,
-    );
+      _animationComponent = SpriteAnimationGroupComponent<PlayerAnimationState>(
+        animations: {
+          PlayerAnimationState.idle: idleAnim,
+          PlayerAnimationState.run: runAnim,
+          PlayerAnimationState.jump: jumpAnim,
+          PlayerAnimationState.attack: attackAnim,
+          PlayerAnimationState.dodge: dodgeAnim,
+          PlayerAnimationState.hurt: hurtAnim,
+          PlayerAnimationState.death: deathAnim,
+        },
+        current: PlayerAnimationState.idle,
+        size: Vector2(128, 64),
+        position: Vector2(size.x / 2, size.y),
+        anchor: Anchor.bottomCenter,
+      );
 
-    add(_animationComponent);
+      add(_animationComponent!);
+    } catch (e) {
+      // Asset loading failed, fallback to hitbox
+    }
   }
 
-  Future<SpriteAnimation> _loadAnimation(String name, int amount, int amountPerRow) async {
-    return SpriteAnimation.fromFrameData(
-      await game.images.load('../characters/player/$name'),
-      SpriteAnimationData.sequenced(
-        amount: amount,
-        amountPerRow: amountPerRow,
-        stepTime: 0.1,
-        textureSize: Vector2(128, 64),
-      ),
+  Future<SpriteAnimation> _loadAnimation(
+    String filename,
+    int amount,
+    int amountPerRow, {
+    double stepTime = 0.1,
+    bool loop = true,
+  }) async {
+    return AssetRegistry.getAnimationFromAtlas(
+      game,
+      'assets/images/atlas/spritesheet.json',
+      'atlas/spritesheet.png',
+      filename,
+      amount: amount,
+      amountPerRow: amountPerRow,
+      stepTime: stepTime,
+      textureSize: Vector2(128, 64),
+      loop: loop,
+      key: 'characters/player/$filename',
     );
   }
 
   @override
   void update(double dt) {
-    super.update(dt);
-
     // Hit-stop: freeze everything during hit-stop
     if (_hitStopTimer > 0) {
       _hitStopTimer -= dt;
       return;
     }
+
+    if (_isDead) {
+      _respawnTimer -= dt;
+      if (_respawnTimer <= 0) {
+        game.onPlayerDeath();
+      }
+      _updateAnimation();
+      _applyGravity(dt);
+      _applyVelocity(dt);
+      return;
+    }
+
+    super.update(dt);
 
     _updateTimers(dt);
     _handleAttack(dt);
@@ -151,31 +179,40 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   }
 
   void _updateAnimation() {
+    final anim = _animationComponent;
+    if (anim == null) return;
+
     // Handle flipping based on direction
-    if (_facingDirection == 1 && _animationComponent.scale.x < 0) {
-      _animationComponent.scale.x *= -1;
-    } else if (_facingDirection == -1 && _animationComponent.scale.x > 0) {
-      _animationComponent.scale.x *= -1;
+    if (!_isDead) {
+      if (_facingDirection == 1 && anim.scale.x < 0) {
+        anim.scale.x *= -1;
+      } else if (_facingDirection == -1 && anim.scale.x > 0) {
+        anim.scale.x *= -1;
+      }
     }
 
     // Determine current animation state
-    if (_hurtTimer > 0) {
-      _animationComponent.current = PlayerAnimationState.hurt;
+    if (_isDead) {
+      anim.current = PlayerAnimationState.death;
+    } else if (_hurtTimer > 0) {
+      anim.current = PlayerAnimationState.hurt;
     } else if (_isDodging) {
-      _animationComponent.current = PlayerAnimationState.dodge;
+      anim.current = PlayerAnimationState.dodge;
     } else if (_isAttacking) {
-      _animationComponent.current = PlayerAnimationState.attack;
+      anim.current = PlayerAnimationState.attack;
     } else if (!isOnGround) {
-      _animationComponent.current = PlayerAnimationState.jump;
+      anim.current = PlayerAnimationState.jump;
     } else if (velocity.x != 0) {
-      _animationComponent.current = PlayerAnimationState.run;
+      anim.current = PlayerAnimationState.run;
     } else {
-      _animationComponent.current = PlayerAnimationState.idle;
+      anim.current = PlayerAnimationState.idle;
     }
   }
 
   @override
   bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
+    if (_isDead) return false;
+
     moveLeft = keysPressed.contains(LogicalKeyboardKey.keyA);
     moveRight = keysPressed.contains(LogicalKeyboardKey.keyD);
     
@@ -324,7 +361,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     position += velocity * dt;
 
     // Fall into void = death
-    if (position.y > 1000) {
+    if (position.y > 4000) {
       _die();
     }
   }
@@ -366,6 +403,10 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
     if (other is PlatformBlock) {
       _resolveBlockCollision(other);
+    }
+
+    if (other is Lava) {
+        _onHazardContact(other.damage);
     }
   }
 
@@ -417,8 +458,13 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   }
 
   void _die() {
+    if (_isDead) return;
+    
+    _isDead = true;
+    _respawnTimer = respawnDelay;
+    velocity.x = 0; // Stop horizontal movement on death
+    
     game.playerState.deathCount++;
-    game.onPlayerDeath();
   }
 
   /// Activate the Indomitable state (called when resolve is full).
