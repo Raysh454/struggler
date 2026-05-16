@@ -2,6 +2,7 @@ import 'package:flame/components.dart' hide Block;
 import 'package:flame/game.dart';
 
 import 'level_data.dart';
+import 'level_validator.dart';
 import 'tile_grid.dart';
 import '../components/block.dart';
 import '../components/lava.dart';
@@ -23,13 +24,16 @@ class LevelManager {
     LevelData data,
     LevelTheme theme,
   ) async {
+    // Validate and sanitize the level data before building
+    final validatedData = LevelValidator.validate(data);
+
     final components = <Component>[];
 
     // Preprocess tiles into a grid for O(1) neighbor lookups
-    final grid = TileGrid.fromTiles(data.tiles, data.width, data.height);
+    final grid = TileGrid.fromTiles(validatedData.tiles, validatedData.width, validatedData.height);
 
     // --- Tiles ---
-    for (final tile in data.tiles) {
+    for (final tile in validatedData.tiles) {
       final pos = Vector2(tile.x * tileSize, tile.y * tileSize);
       final size = Vector2(tile.w * tileSize, tile.h * tileSize);
 
@@ -58,7 +62,7 @@ class LevelManager {
     }
 
     // --- Enemies ---
-    for (final enemy in data.enemies) {
+    for (final enemy in validatedData.enemies) {
       components.add(Enemy(
         position: Vector2(enemy.x * tileSize, enemy.y * tileSize),
         maxHealth: enemy.health,
@@ -70,7 +74,7 @@ class LevelManager {
     }
 
     // --- Pickups ---
-    for (final pickup in data.pickups) {
+    for (final pickup in validatedData.pickups) {
       final pos = Vector2(pickup.x * tileSize, pickup.y * tileSize);
       switch (pickup.type) {
         case 'health':
@@ -84,7 +88,7 @@ class LevelManager {
 
     // --- Exit portal ---
     components.add(ExitPortal(
-      position: Vector2(data.exit.x * tileSize, data.exit.y * tileSize),
+      position: Vector2(validatedData.exit.x * tileSize, validatedData.exit.y * tileSize),
     ));
 
     return components;
@@ -144,7 +148,7 @@ class LevelManager {
         architectDialogue: "So... you've decided to struggle. How quaint.",
       );
     } else if (levelId == 2) {
-      // LEVEL 2: Vertical Climb
+      // LEVEL 2: Vertical Climb — zigzag ascent with comfortable platform spacing
       return LevelData(
         levelId: levelId,
         difficulty: 0.5,
@@ -153,41 +157,51 @@ class LevelManager {
         spawn: (x: 2, y: 36),
         exit: (x: 25, y: 4),
         tiles: [
-          // Ground floor (lava underneath)
-          TileData(type: 'lava', x: 0, y: 39, w: 30, h: 1),
-          TileData(type: 'block', x: 0, y: 38, w: 6, h: 1),
-          
-          // Stepping stones up
-          TileData(type: 'block', x: 8, y: 34, w: 3, h: 1),
-          TileData(type: 'block', x: 14, y: 31, w: 4, h: 1),
-          TileData(type: 'block', x: 22, y: 28, w: 3, h: 1),
-          
-          // Switchback
-          TileData(type: 'block', x: 12, y: 24, w: 6, h: 1),
-          TileData(type: 'block', x: 2, y: 20, w: 5, h: 1),
-          
-          // A wall that forces you to go around
-          TileData(type: 'block', x: 15, y: 15, w: 2, h: 10),
-          
-          // More climbing
-          TileData(type: 'block', x: 9, y: 16, w: 4, h: 1),
-          TileData(type: 'block', x: 20, y: 13, w: 3, h: 1),
-          TileData(type: 'block', x: 10, y: 9, w: 5, h: 1),
-          TileData(type: 'block', x: 22, y: 5, w: 6, h: 1),
-          
+          // Ground floor with lava pit underneath
+          TileData(type: 'block', x: 0, y: 38, w: 30, h: 2),  // Solid ground base
+          TileData(type: 'lava', x: 6, y: 37, w: 8, h: 1),     // Lava gap in ground (on top of base)
+
+          // === ASCENDING PLATFORMS (zigzag, max 3 tiles up, max 5 tiles across) ===
+          // Tier 1: Right
+          TileData(type: 'block', x: 7, y: 35, w: 4, h: 1),
+          TileData(type: 'block', x: 15, y: 33, w: 5, h: 1),
+
+          // Tier 2: Left switchback
+          TileData(type: 'block', x: 22, y: 30, w: 4, h: 1),
+          TileData(type: 'block', x: 14, y: 28, w: 5, h: 1),
+
+          // Tier 3: Right again
+          TileData(type: 'block', x: 6, y: 26, w: 4, h: 1),
+          TileData(type: 'block', x: 13, y: 23, w: 5, h: 1),
+
+          // Tier 4: Left switchback with wall obstacle
+          TileData(type: 'block', x: 21, y: 21, w: 4, h: 1),
+          TileData(type: 'block', x: 14, y: 18, w: 5, h: 1),
+
+          // Tier 5: Right
+          TileData(type: 'block', x: 5, y: 16, w: 5, h: 1),
+          TileData(type: 'block', x: 13, y: 13, w: 4, h: 1),
+
+          // Tier 6: Final approach to exit
+          TileData(type: 'block', x: 20, y: 10, w: 4, h: 1),
+          TileData(type: 'block', x: 14, y: 7, w: 4, h: 1),
+          TileData(type: 'block', x: 22, y: 5, w: 6, h: 1),  // Exit platform
+
+          // Small wall obstacle mid-level (only 3 tiles tall, jumpable)
+          TileData(type: 'block', x: 11, y: 24, w: 1, h: 3),
+
           // Spikes on some platforms
-          TileData(type: 'spike', x: 13, y: 23, w: 2, h: 1),
-          TileData(type: 'spike', x: 3, y: 19, w: 1, h: 1),
-          TileData(type: 'spike', x: 11, y: 8, w: 2, h: 1),
+          TileData(type: 'spike', x: 16, y: 32, w: 2, h: 1),
+          TileData(type: 'spike', x: 15, y: 17, w: 1, h: 1),
         ],
         enemies: [
-          EnemyData(x: 14, y: 30, health: 50, damage: 10, speed: 1.0, type: 'basic', patrolRange: 2),
-          EnemyData(x: 12, y: 23, health: 50, damage: 10, speed: 1.2, type: 'basic', patrolRange: 1),
-          EnemyData(x: 10, y: 8, health: 30, damage: 5, speed: 2.0, type: 'fast', patrolRange: 2),
+          EnemyData(x: 16, y: 32, health: 50, damage: 10, speed: 1.0, type: 'basic', patrolRange: 2),
+          EnemyData(x: 15, y: 27, health: 50, damage: 10, speed: 1.2, type: 'basic', patrolRange: 2),
+          EnemyData(x: 14, y: 12, health: 30, damage: 5, speed: 2.0, type: 'fast', patrolRange: 2),
         ],
         pickups: [
-          PickupData(type: 'health', x: 2, y: 19),
-          PickupData(type: 'ore', x: 2, y: 10),
+          PickupData(type: 'health', x: 22, y: 20),
+          PickupData(type: 'ore', x: 6, y: 15),
         ],
         architectDialogue: "You survived the pit. Let's see how you handle heights.",
       );

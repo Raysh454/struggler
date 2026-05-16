@@ -1,20 +1,16 @@
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
-import 'package:struggler/game/components/block.dart';
 import 'package:struggler/game/level/level_theme.dart';
 import 'dart:ui';
 import 'dart:math';
 
 /// Lava hazard. Damages the player on contact and has a pulsing glow.
+/// This is a static component — LevelValidator guarantees proper placement,
+/// so no gravity or physics simulation is needed.
 class Lava extends PositionComponent with CollisionCallbacks {
   final double damage;
   final LevelTheme theme;
   double _glowTimer = 0;
-  bool isOnGround = false;
-  Vector2 velocity = Vector2.zero();
-
-  static const double gravity = 1200.0;
-  static const double maxFallSpeed = 1000.0;
 
   Lava({
     required Vector2 position,
@@ -34,41 +30,6 @@ class Lava extends PositionComponent with CollisionCallbacks {
   void update(double dt) {
     super.update(dt);
     _glowTimer += dt * 3;
-  }
-
-  @override
-  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
-    super.onCollision(intersectionPoints, other);
-
-    if (other is PlatformBlock) {
-      _resolveBlockCollision(other);
-    }
-  }
-
-  void _resolveBlockCollision(PlatformBlock block) {
-    final lavaRect = toRect();
-    final blockRect = block.toRect();
-
-    // Calculate overlap on each side to find the direction
-    final overlapLeft = lavaRect.right - blockRect.left;
-    final overlapRight = blockRect.right - lavaRect.left;
-    final overlapTop = lavaRect.bottom - blockRect.top;
-    final overlapBottom = blockRect.bottom - lavaRect.top;
-
-    // Find minimum overlap to determine collision direction
-    final minOverlap = [overlapLeft, overlapRight, overlapTop, overlapBottom]
-        .reduce((a, b) => a < b ? a : b);
-
-    // ONLY resolve if we are landing on the top surface
-    if (minOverlap == overlapTop && velocity.y >= 0) {
-      position.y = block.position.y - size.y;
-      velocity.y = 0;
-      isOnGround = true;
-    }
-  }
-
-  void _die() {
-    removeFromParent();
   }
 
   @override
