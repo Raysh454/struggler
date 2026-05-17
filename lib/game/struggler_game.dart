@@ -148,9 +148,11 @@ class StruggleGame extends FlameGame
     player.attackPressed = true;
   }
 
-  /// Called when the player reaches the exit portal.
   void onLevelComplete() {
     gameState.completeLevel();
+    if (gameState.currentLevel > 4) {
+      gameState.currentLevel = 1; // Loop back to level 1 for test levels
+    }
     // TODO: Show level complete overlay, load next level
     loadLevel(gameState.currentLevel);
   }

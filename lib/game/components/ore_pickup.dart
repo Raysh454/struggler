@@ -1,5 +1,6 @@
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import '../config.dart';
 import 'dart:ui';
 import 'dart:math';
 
@@ -15,7 +16,7 @@ class OrePickup extends PositionComponent with CollisionCallbacks, HasGameRefere
     required Vector2 position,
   }) : super(
           position: position,
-          size: Vector2.all(10),        
+          size: GameConfig.orePickupSize,
         );
 
   @override

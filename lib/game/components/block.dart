@@ -3,6 +3,7 @@ import 'package:flame/components.dart';
 import 'dart:ui';
 import 'dart:math';
 
+import '../config.dart';
 import '../level/level_theme.dart';
 import '../level/tile_grid.dart';
 import 'decoration.dart';
@@ -11,16 +12,18 @@ import 'decoration.dart';
 class PlatformBlock extends PositionComponent with CollisionCallbacks {
   final LevelTheme theme;
   final TileGrid grid;
+  final bool isJumpThrough;
   Picture? _cachedPicture;
 
   /// Small overlap to eliminate sub-pixel seams between tiles.
-  static const double _overlap = 1.0;
+  static const double _overlap = GameConfig.blockOverlap;
 
   PlatformBlock({
     required Vector2 position,
     required Vector2 size,
     required this.theme,
     required this.grid,
+    this.isJumpThrough = false,
   }) : super(position: position, size: size);
 
   @override
@@ -34,7 +37,7 @@ class PlatformBlock extends PositionComponent with CollisionCallbacks {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
     final random = Random(position.hashCode); // Deterministic per-block
-    const double ts = 32.0;
+    const double ts = GameConfig.tileSize;
 
     for (double y = 0; y < size.y; y += ts) {
       for (double x = 0; x < size.x; x += ts) {
@@ -105,7 +108,7 @@ class PlatformBlock extends PositionComponent with CollisionCallbacks {
 
   void _spawnDecorations() {
     final random = Random(position.hashCode + 1);
-    const double ts = 32.0;
+    const double ts = GameConfig.tileSize;
 
     for (double x = 0; x < size.x; x += ts) {
       final gx = ((position.x + x) / ts).round();
@@ -115,39 +118,39 @@ class PlatformBlock extends PositionComponent with CollisionCallbacks {
       if (grid.isSolid(gx, gy - 1) || grid.isLava(gx, gy - 1)) continue;
 
       // Grass
-      if (theme.grassSprites.isNotEmpty && random.nextDouble() > 0.3) {
+      if (theme.grassSprites.isNotEmpty && random.nextDouble() > (1.0 - GameConfig.grassSpawnChance)) {
         final sprite = _randomFrom(theme.grassSprites, random);
-        final patchSize = Vector2(32, 32);
-        final xOffset = random.nextDouble() * 8 - 4;
+        final patchSize = GameConfig.grassPatchSize;
+        final xOffset = random.nextDouble() * (GameConfig.grassMaxXOffset * 2) - GameConfig.grassMaxXOffset;
         add(DecorationComponent(
           sprite: sprite,
-          position: Vector2(x + xOffset, -patchSize.y + 17),
+          position: Vector2(x + xOffset, -patchSize.y + GameConfig.grassYOffset),
           size: patchSize,
         ));
       }
 
       // Rocks (occasional)
-      if (theme.rockSprites.isNotEmpty && random.nextDouble() > 0.85) {
+      if (theme.rockSprites.isNotEmpty && random.nextDouble() > (1.0 - GameConfig.rockSpawnChance)) {
         final sprite = _randomFrom(theme.rockSprites, random);
-        final scale = 24.0 / sprite.srcSize.y;
+        final scale = GameConfig.rockScaleHeightReference / sprite.srcSize.y;
         final rockSize = sprite.srcSize * scale;
         add(DecorationComponent(
           sprite: sprite,
-          position: Vector2(x + 4, -rockSize.y + (rockSize.y * 0.6)),
+          position: Vector2(x + GameConfig.rockXOffset, -rockSize.y + (rockSize.y * GameConfig.rockYOffsetRatio)),
           size: rockSize,
         ));
       }
 
       // Trees (rare)
-      if (theme.treeSprites.isNotEmpty && random.nextDouble() > 0.92) {
+      if (theme.treeSprites.isNotEmpty && random.nextDouble() > (1.0 - GameConfig.treeSpawnChance)) {
         final sprite = _randomFrom(theme.treeSprites, random);
-        final treeSize = sprite.srcSize.clone()..scale(0.5);
+        final treeSize = sprite.srcSize.clone()..scale(GameConfig.treeScaleRatio);
         add(
           DecorationComponent(
             sprite: sprite,
-            position: Vector2(x, -treeSize.y + 3),
+            position: Vector2(x + GameConfig.treeXOffset, -treeSize.y + GameConfig.treeYOffset),
             size: treeSize,
-          )..priority = -10,
+          )..priority = GameConfig.treePriority,
         );
       }
     }
@@ -169,7 +172,7 @@ class PillarComponent extends PositionComponent {
   Picture? _cachedPicture;
 
   /// Small overlap to eliminate sub-pixel seams between tiles.
-  static const double _overlap = 1.0;
+  static const double _overlap = GameConfig.blockOverlap;
 
   PillarComponent({
     required this.theme,
@@ -191,8 +194,8 @@ class PillarComponent extends PositionComponent {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
     final random = Random(position.hashCode + 99);
-    const double ts = 32.0;
-    const int maxDepth = 6;
+    const double ts = GameConfig.tileSize;
+    final int targetDepth = random.nextInt(3) + 4; // 2 to 4 tiles deep
 
     final int columnCount = (size.x / ts).ceil();
     final int startGy = (position.y / ts).round();
@@ -209,7 +212,7 @@ class PillarComponent extends PositionComponent {
 
       // Find depth: stop at ground or max depth
       int depth = 0;
-      for (int gy = startGy; gy < grid.height && depth < maxDepth; gy++) {
+      for (int gy = startGy; gy < grid.height && depth < targetDepth; gy++) {
         if (grid.isSolid(gx, gy)) break;
         depth++;
       }

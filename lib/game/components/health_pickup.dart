@@ -1,5 +1,6 @@
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import '../config.dart';
 import 'dart:ui';
 import 'dart:math';
 
@@ -14,10 +15,10 @@ class HealthPickup extends PositionComponent with CollisionCallbacks, HasGameRef
 
   HealthPickup({
     required Vector2 position,
-    this.healAmount = 30.0,
+    this.healAmount = GameConfig.healthPickupHealAmountDefault,
   }) : super(
           position: position,
-          size: Vector2.all(10),
+          size: GameConfig.healthPickupSize,
         );
 
   @override

@@ -2,6 +2,7 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'dart:ui';
 import '../level/level_theme.dart';
+import '../config.dart';
 
 /// Spike hazard. Damages the player on contact. Can be on floors or walls.
 class Spike extends PositionComponent with CollisionCallbacks {
@@ -12,7 +13,7 @@ class Spike extends PositionComponent with CollisionCallbacks {
     required Vector2 position,
     required Vector2 size,
     required this.theme,
-    this.damage = 20.0,
+    this.damage = GameConfig.spikeDamageDefault,
   }) : super(position: position, size: size);
 
   @override
@@ -27,7 +28,7 @@ class Spike extends PositionComponent with CollisionCallbacks {
     final sprite = theme.floorSpikeSprite;
     
     // Tile the spike sprite across the width
-    const double spikeTileSize = 32.0;
+    const double spikeTileSize = GameConfig.tileSize;
     for (double x = 0; x < size.x; x += spikeTileSize) {
       sprite.render(
         canvas,

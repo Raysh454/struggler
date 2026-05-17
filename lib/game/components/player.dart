@@ -3,6 +3,7 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart' hide Block;
 import 'package:flutter/services.dart';
 import '../asset_registry.dart';
+import '../config.dart';
 
 import '../components/block.dart';
 import '../components/lava.dart';
@@ -27,22 +28,22 @@ enum PlayerAnimationState {
 class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler, HasGameReference<StruggleGame> {
   SpriteAnimationGroupComponent<PlayerAnimationState>? _animationComponent;
   // --- Movement ---
-  static const double moveSpeed = 200.0;
-  static const double jumpForce = -400.0;
-  static const double gravity = 900.0;
-  static const double maxFallSpeed = 600.0;
+  static const double moveSpeed = GameConfig.playerMoveSpeed;
+  static const double jumpForce = GameConfig.playerJumpForce;
+  static const double gravity = GameConfig.playerGravity;
+  static const double maxFallSpeed = GameConfig.playerMaxFallSpeed;
 
   Vector2 velocity = Vector2.zero();
   bool isOnGround = false;
   int _facingDirection = 1; // 1 = right, -1 = left
   
   // --- Jump State ---
-  int _jumpsRemaining = 2;
-  static const int _maxJumps = 2;
+  int _jumpsRemaining = GameConfig.playerMaxJumps;
+  static const int _maxJumps = GameConfig.playerMaxJumps;
   double _jumpBufferTimer = 0;
-  static const double _jumpBufferDuration = 0.15;
+  static const double _jumpBufferDuration = GameConfig.playerJumpBufferDuration;
   double _coyoteTimer = 0;
-  static const double _coyoteDuration = 0.1;
+  static const double _coyoteDuration = GameConfig.playerCoyoteDuration;
 
   // --- Input state (set by the game/controls) ---
   bool moveLeft = false;
@@ -54,22 +55,22 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   // --- Combat ---
   bool _isAttacking = false;
   double _attackTimer = 0;
-  static const double attackDuration = 0.28;
-  static const double attackCooldown = 0.35;
+  static const double attackDuration = GameConfig.playerAttackDuration;
+  static const double attackCooldown = GameConfig.playerAttackCooldown;
   double _attackCooldownTimer = 0;
 
   // --- Dodge ---
   bool _isDodging = false;
   double _dodgeTimer = 0;
-  static const double dodgeDuration = 0.2;
-  static const double dodgeSpeed = 450.0;
-  static const double dodgeCooldown = 0.5;
+  static const double dodgeDuration = GameConfig.playerDodgeDuration;
+  static const double dodgeSpeed = GameConfig.playerDodgeSpeed;
+  static const double dodgeCooldown = GameConfig.playerDodgeCooldown;
   double _dodgeCooldownTimer = 0;
   bool get isInvincible => _isDodging;
 
   // --- Hit-stop ---
   double _hitStopTimer = 0;
-  static const double hitStopDuration = 0.05;
+  static const double hitStopDuration = GameConfig.playerHitStopDuration;
 
   // --- Hurt flash ---
   double _hurtTimer = 0;
@@ -77,7 +78,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   // --- Death state ---
   bool _isDead = false;
   double _respawnTimer = 0;
-  static const double respawnDelay = 1.5;
+  static const double respawnDelay = GameConfig.playerRespawnDelay;
 
   // --- Resolve visual ---
   bool get isIndomitable => game.playerState.isIndomitable;
@@ -85,7 +86,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   Player({required Vector2 position})
       : super(
           position: position,
-          size: Vector2(28, 40),
+          size: GameConfig.playerSize,
         );
 
   @override
@@ -114,7 +115,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
           PlayerAnimationState.death: deathAnim,
         },
         current: PlayerAnimationState.idle,
-        size: Vector2(128, 64),
+        size: GameConfig.playerAnimationSize,
         position: Vector2(size.x / 2, size.y),
         anchor: Anchor.bottomCenter,
       );
@@ -140,7 +141,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       amount: amount,
       amountPerRow: amountPerRow,
       stepTime: stepTime,
-      textureSize: Vector2(128, 64),
+      textureSize: GameConfig.playerAnimationSize,
       loop: loop,
       key: 'characters/player/$filename',
     );
@@ -424,6 +425,19 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     final minOverlap = [overlapLeft, overlapRight, overlapTop, overlapBottom]
         .reduce((a, b) => a < b ? a : b);
 
+    if (block.isJumpThrough) {
+      if (minOverlap == overlapTop && velocity.y >= 0) {
+        // Only land if we are falling onto the top surface, not jumping through from below
+        if (overlapTop <= size.y * 0.5) {
+          position.y = block.position.y - size.y;
+          velocity.y = 0;
+          isOnGround = true;
+          _jumpsRemaining = _maxJumps;
+        }
+      }
+      return; // Ignore other collisions (bottom, sides)
+    }
+
     if (minOverlap == overlapTop && velocity.y >= 0) {
       // Landing on top
       position.y = block.position.y - size.y;
@@ -449,7 +463,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     if (isInvincible) return;
 
     final died = game.playerState.takeDamage(damage);
-    _hurtTimer = 0.3;
+    _hurtTimer = GameConfig.playerHurtDuration;
     game.onScreenShake(5.0);
 
     if (died) {

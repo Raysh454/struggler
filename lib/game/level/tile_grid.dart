@@ -49,7 +49,7 @@ class TileGrid {
     final List<List<String?>> grid = List.generate(h, (_) => List<String?>.filled(w, null));
 
     for (final tile in tiles) {
-      if (tile.type != 'block' && tile.type != 'lava') continue;
+      if (tile.type != 'block' && tile.type != 'lava' && tile.type != 'platform') continue;
 
       final startX = tile.x.round();
       final startY = tile.y.round();
@@ -71,7 +71,7 @@ class TileGrid {
   /// Check if a cell is a solid block.
   bool isSolid(int x, int y) {
     if (x < 0 || y < 0 || x >= width || y >= height) return false;
-    return _grid[y][x] == 'block';
+    return _grid[y][x] == 'block' || _grid[y][x] == 'platform';
   }
 
   /// Check if a cell contains lava.
@@ -84,12 +84,12 @@ class TileGrid {
   /// A pillar exists if there is a solid block up to 6 tiles above it.
   bool hasPillar(int x, int y) {
     if (x < 0 || y < 0 || x >= width || y >= height) return false;
-    if (isSolid(x, y)) return false;
+    if (_grid[y][x] == 'block') return false; // platform doesn't block pillars from above, block does
     
     // Check up to 6 tiles above (maxDepth of pillars is 6)
     for (int i = 1; i <= 6; i++) {
       if (y - i < 0) break;
-      if (isSolid(x, y - i)) return true;
+      if (_grid[y - i][x] == 'block') return true; // only 'block' casts pillars
     }
     return false;
   }

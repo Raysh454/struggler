@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'level_data.dart';
+import '../config.dart';
 
 /// Validates and sanitizes AI-generated LevelData to guarantee:
 /// 1. No floating lava/spikes (must be anchored to blocks)
@@ -20,11 +21,11 @@ class LevelValidator {
   // Max horizontal (DJ + dodge): ~12.3 tiles
   //
   // We use conservative values so levels are comfortably solvable:
-  static const int maxJumpHeight = 5;      // tiles upward (from 5.56)
-  static const int maxHorizontalGap = 10;  // tiles across (from 12.3)
-  static const int spawnSafeRadius = 3;    // tiles around spawn free of hazards
-  static const int exitSafeRadius = 2;     // tiles around exit free of hazards
-  static const int maxRepairIterations = 3;
+  static const int maxJumpHeight = GameConfig.validatorMaxJumpHeight;      // tiles upward (from 5.56)
+  static const int maxHorizontalGap = GameConfig.validatorMaxHorizontalGap;  // tiles across (from 12.3)
+  static const int spawnSafeRadius = GameConfig.validatorSpawnSafeRadius;    // tiles around spawn free of hazards
+  static const int exitSafeRadius = GameConfig.validatorExitSafeRadius;     // tiles around exit free of hazards
+  static const int maxRepairIterations = GameConfig.validatorMaxRepairIterations;
 
   /// Validate and sanitize the level data.
   /// Returns a new [LevelData] that is guaranteed to be solvable,
@@ -98,7 +99,7 @@ class LevelValidator {
     final sanitized = <TileData>[];
 
     for (final tile in tiles) {
-      if (tile.type == 'block') {
+      if (tile.type == 'block' || tile.type == 'platform') {
         sanitized.add(tile);
         continue;
       }
@@ -145,17 +146,17 @@ class LevelValidator {
     // Allow lava that sits directly on blocks
     for (int x = startX; x < endX && x < w; x++) {
       if (x < 0) continue;
-      if (bottomY >= 0 && bottomY < h && grid[bottomY][x] == 'block') {
+      if (bottomY >= 0 && bottomY < h && (grid[bottomY][x] == 'block' || grid[bottomY][x] == 'platform')) {
         continue; // This column is supported
       }
       // Also allow if lava is filling a gap between blocks (lava at same Y as blocks)
       final lavaY = lava.y.round();
       bool hasBlockAdjacent = false;
       // Check left and right for blocks at the same Y
-      if (startX > 0 && lavaY >= 0 && lavaY < h && grid[lavaY][startX - 1] == 'block') {
+      if (startX > 0 && lavaY >= 0 && lavaY < h && (grid[lavaY][startX - 1] == 'block' || grid[lavaY][startX - 1] == 'platform')) {
         hasBlockAdjacent = true;
       }
-      if (endX < w && lavaY >= 0 && lavaY < h && grid[lavaY][endX] == 'block') {
+      if (endX < w && lavaY >= 0 && lavaY < h && (grid[lavaY][endX] == 'block' || grid[lavaY][endX] == 'platform')) {
         hasBlockAdjacent = true;
       }
       if (!hasBlockAdjacent) return false;
@@ -173,7 +174,7 @@ class LevelValidator {
 
     // At least one column below must be solid
     for (int x = startX; x < endX && x < w; x++) {
-      if (x >= 0 && grid[belowY][x] == 'block') return true;
+      if (x >= 0 && (grid[belowY][x] == 'block' || grid[belowY][x] == 'platform')) return true;
     }
     return false;
   }
@@ -193,7 +194,7 @@ class LevelValidator {
         // Check if there's ground within 3 tiles below the enemy
         bool hasGround = false;
         for (int checkY = ey; checkY < min(ey + 3, h + 10); checkY++) {
-          if (checkY >= 0 && checkY < grid.length && ex < grid[0].length && grid[checkY][ex] == 'block') {
+          if (checkY >= 0 && checkY < grid.length && ex < grid[0].length && (grid[checkY][ex] == 'block' || grid[checkY][ex] == 'platform')) {
             hasGround = true;
             break;
           }
@@ -222,10 +223,10 @@ class LevelValidator {
 
       if (px >= 0 && px < w + 10 && py >= 0 && py < h + 10 &&
           py < grid.length && px < grid[0].length) {
-        if (grid[py][px] == 'block') {
+        if (grid[py][px] == 'block' || grid[py][px] == 'platform') {
           // Inside a block — move it up
           int newY = py - 1;
-          while (newY >= 0 && newY < grid.length && px < grid[0].length && grid[newY][px] == 'block') {
+          while (newY >= 0 && newY < grid.length && px < grid[0].length && (grid[newY][px] == 'block' || grid[newY][px] == 'platform')) {
             newY--;
           }
           if (newY >= 0) {
@@ -277,7 +278,7 @@ class LevelValidator {
     bool hasSpawnGround = false;
     for (int checkY = sy + 1; checkY < min(sy + 4, h + 10); checkY++) {
       if (checkY >= 0 && checkY < grid.length && sx >= 0 && sx < grid[0].length &&
-          grid[checkY][sx] == 'block') {
+          (grid[checkY][sx] == 'block' || grid[checkY][sx] == 'platform')) {
         hasSpawnGround = true;
         break;
       }
@@ -303,7 +304,7 @@ class LevelValidator {
     bool hasExitGround = false;
     for (int checkY = ey + 1; checkY < min(ey + 4, h + 10); checkY++) {
       if (checkY >= 0 && checkY < grid.length && ex >= 0 && ex < grid[0].length &&
-          grid[checkY][ex] == 'block') {
+          (grid[checkY][ex] == 'block' || grid[checkY][ex] == 'platform')) {
         hasExitGround = true;
         break;
       }
@@ -332,8 +333,8 @@ class LevelValidator {
       int? runStart;
       for (int x = 0; x <= gridW; x++) {
         final isSurface = x < gridW &&
-            grid[y][x] == 'block' &&
-            (y == 0 || grid[y - 1][x] != 'block');
+            (grid[y][x] == 'block' || grid[y][x] == 'platform') &&
+            (y == 0 || (grid[y - 1][x] != 'block' && grid[y - 1][x] != 'platform'));
 
         if (isSurface) {
           runStart ??= x;
@@ -473,7 +474,7 @@ class LevelValidator {
       // Check if this column is completely blocked (wall from top to bottom of path)
       bool columnBlocked = true;
       for (int y = max(0, minY); y <= min(maxY, gridH - 1); y++) {
-        if (grid[y][x] != 'block') {
+        if (grid[y][x] != 'block' && grid[y][x] != 'platform') {
           columnBlocked = false;
           break;
         }

@@ -1,5 +1,6 @@
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import '../config.dart';
 import 'dart:ui';
 import 'dart:math';
 
@@ -11,7 +12,7 @@ class ExitPortal extends PositionComponent with CollisionCallbacks {
     required Vector2 position,
   }) : super(
           position: position,
-          size: Vector2(32, 48),
+          size: GameConfig.exitPortalSize,
         );
 
   @override

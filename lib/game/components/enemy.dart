@@ -3,6 +3,7 @@ import 'package:flame/components.dart' hide Block;
 import 'dart:ui';
 
 import '../components/block.dart';
+import '../config.dart';
 
 /// Enemy entity with patrol AI and combat stats.
 class Enemy extends PositionComponent with CollisionCallbacks {
@@ -23,7 +24,7 @@ class Enemy extends PositionComponent with CollisionCallbacks {
 
   // --- Physics ---
   double _velocityY = 0;
-  static const double _gravity = 900.0;
+  static const double _gravity = GameConfig.enemyGravity;
   bool _isOnGround = false;
 
   Enemy({
@@ -42,11 +43,11 @@ class Enemy extends PositionComponent with CollisionCallbacks {
   static Vector2 _sizeForType(String type) {
     switch (type) {
       case 'heavy':
-        return Vector2(36, 44);
+        return GameConfig.enemySizeHeavy;
       case 'fast':
-        return Vector2(22, 32);
+        return GameConfig.enemySizeFast;
       default:
-        return Vector2(28, 36);
+        return GameConfig.enemySizeBasic;
     }
   }
 
@@ -130,7 +131,7 @@ class Enemy extends PositionComponent with CollisionCallbacks {
   /// Take damage. Returns true if the enemy died.
   bool takeDamage(double damage) {
     health -= damage;
-    _hurtTimer = 0.15;
+    _hurtTimer = GameConfig.enemyHurtDuration;
 
     if (health <= 0) {
       isDead = true;

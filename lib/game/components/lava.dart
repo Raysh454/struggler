@@ -1,6 +1,7 @@
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:struggler/game/level/level_theme.dart';
+import '../config.dart';
 import 'dart:ui';
 import 'dart:math';
 
@@ -16,7 +17,7 @@ class Lava extends PositionComponent with CollisionCallbacks {
     required Vector2 position,
     required Vector2 size,
     required this.theme,
-    this.damage = 15.0,
+    this.damage = GameConfig.lavaDamageDefault,
   }) : super(position: position, size: size) {
     priority = -5; // Render behind the foreground blocks, but in front of background pillars
   }
@@ -34,12 +35,12 @@ class Lava extends PositionComponent with CollisionCallbacks {
 
   @override
   void render(Canvas canvas) {
-    const double destTileSize = 32.0;
+    const double destTileSize = GameConfig.tileSize;
     
     // Large bleed to completely tuck behind the adjacent platform cliff walls.
     // Because Lava is rendered at priority -5, this safely stays behind the solid 
     // rocks, filling any transparent gaps perfectly.
-    const double bleed = 32.0; 
+    const double bleed = GameConfig.lavaBleed; 
 
     for (double y = 0; y < size.y; y += destTileSize) {
       for (double x = -bleed; x < size.x + bleed; x += destTileSize) {

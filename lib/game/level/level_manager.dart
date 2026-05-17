@@ -1,5 +1,6 @@
 import 'package:flame/components.dart' hide Block;
 import 'package:flame/game.dart';
+import '../config.dart';
 
 import 'level_data.dart';
 import 'level_validator.dart';
@@ -16,7 +17,7 @@ import 'level_theme.dart';
 /// Converts a LevelData JSON blueprint into Flame game components.
 class LevelManager {
   /// Tile size in pixels. All grid coordinates multiply by this.
-  static const double tileSize = 32.0;
+  static const double tileSize = GameConfig.tileSize;
 
   /// Build all components for a level blueprint.
   static Future<List<Component>> buildLevel(
@@ -44,6 +45,21 @@ class LevelManager {
             size: size,
             theme: theme,
             grid: grid,
+          ));
+          components.add(PillarComponent(
+            theme: theme,
+            grid: grid,
+            position: Vector2(pos.x, pos.y + size.y),
+            size: Vector2(size.x, 2000),
+          ));
+          break;
+        case 'platform':
+          components.add(PlatformBlock(
+            position: pos,
+            size: size,
+            theme: theme,
+            grid: grid,
+            isJumpThrough: true,
           ));
           components.add(PillarComponent(
             theme: theme,
@@ -120,12 +136,12 @@ class LevelManager {
           TileData(type: 'lava', x: 15, y: 19, w: 3, h: 1),
 
           // Platforms
-          TileData(type: 'block', x: 8, y: 16, w: 4, h: 1),
-          TileData(type: 'block', x: 20, y: 15, w: 5, h: 1),
-          TileData(type: 'block', x: 28, y: 13, w: 3, h: 1),
-          TileData(type: 'block', x: 35, y: 16, w: 4, h: 1),
-          TileData(type: 'block', x: 42, y: 14, w: 5, h: 1),
-          TileData(type: 'block', x: 50, y: 16, w: 8, h: 1),
+          TileData(type: 'platform', x: 8, y: 16, w: 4, h: 1),
+          TileData(type: 'platform', x: 20, y: 15, w: 5, h: 1),
+          TileData(type: 'platform', x: 28, y: 13, w: 3, h: 1),
+          TileData(type: 'platform', x: 35, y: 16, w: 4, h: 1),
+          TileData(type: 'platform', x: 42, y: 14, w: 5, h: 1),
+          TileData(type: 'platform', x: 50, y: 16, w: 8, h: 1),
 
           // Spikes on the ground
           TileData(type: 'spike', x: 38, y: 18, w: 2, h: 1),
@@ -134,7 +150,7 @@ class LevelManager {
           TileData(type: 'block', x: 46, y: 15, w: 1, h: 4),
 
           // High platform for ore (hard to reach)
-          TileData(type: 'block', x: 25, y: 10, w: 3, h: 1),
+          TileData(type: 'platform', x: 25, y: 10, w: 3, h: 1),
         ],
         enemies: [
           EnemyData(x: 22, y: 14, health: 50, damage: 10, speed: 1.0, type: 'basic', patrolRange: 2),
@@ -163,28 +179,28 @@ class LevelManager {
 
           // === ASCENDING PLATFORMS (zigzag, max 3 tiles up, max 5 tiles across) ===
           // Tier 1: Right
-          TileData(type: 'block', x: 7, y: 35, w: 4, h: 1),
-          TileData(type: 'block', x: 15, y: 33, w: 5, h: 1),
+          TileData(type: 'platform', x: 7, y: 35, w: 4, h: 1),
+          TileData(type: 'platform', x: 15, y: 33, w: 5, h: 1),
 
           // Tier 2: Left switchback
-          TileData(type: 'block', x: 22, y: 30, w: 4, h: 1),
-          TileData(type: 'block', x: 14, y: 28, w: 5, h: 1),
+          TileData(type: 'platform', x: 22, y: 30, w: 4, h: 1),
+          TileData(type: 'platform', x: 14, y: 28, w: 5, h: 1),
 
           // Tier 3: Right again
-          TileData(type: 'block', x: 6, y: 26, w: 4, h: 1),
-          TileData(type: 'block', x: 13, y: 23, w: 5, h: 1),
+          TileData(type: 'platform', x: 6, y: 26, w: 4, h: 1),
+          TileData(type: 'platform', x: 13, y: 23, w: 5, h: 1),
 
           // Tier 4: Left switchback with wall obstacle
-          TileData(type: 'block', x: 21, y: 21, w: 4, h: 1),
-          TileData(type: 'block', x: 14, y: 18, w: 5, h: 1),
+          TileData(type: 'platform', x: 21, y: 21, w: 4, h: 1),
+          TileData(type: 'platform', x: 14, y: 18, w: 5, h: 1),
 
           // Tier 5: Right
-          TileData(type: 'block', x: 5, y: 16, w: 5, h: 1),
-          TileData(type: 'block', x: 13, y: 13, w: 4, h: 1),
+          TileData(type: 'platform', x: 5, y: 16, w: 5, h: 1),
+          TileData(type: 'platform', x: 13, y: 13, w: 4, h: 1),
 
           // Tier 6: Final approach to exit
-          TileData(type: 'block', x: 20, y: 10, w: 4, h: 1),
-          TileData(type: 'block', x: 14, y: 7, w: 4, h: 1),
+          TileData(type: 'platform', x: 20, y: 10, w: 4, h: 1),
+          TileData(type: 'platform', x: 14, y: 7, w: 4, h: 1),
           TileData(type: 'block', x: 22, y: 5, w: 6, h: 1),  // Exit platform
 
           // Small wall obstacle mid-level (only 3 tiles tall, jumpable)
@@ -273,14 +289,14 @@ class LevelManager {
           TileData(type: 'spike', x: 35, y: 21, w: 3, h: 1),
           
           // Floating platforms above spikes to jump on
-          TileData(type: 'block', x: 9, y: 17, w: 2, h: 1),
-          TileData(type: 'block', x: 23, y: 16, w: 3, h: 1),
-          TileData(type: 'block', x: 36, y: 17, w: 1, h: 1),
+          TileData(type: 'platform', x: 9, y: 17, w: 2, h: 1),
+          TileData(type: 'platform', x: 23, y: 16, w: 3, h: 1),
+          TileData(type: 'platform', x: 36, y: 17, w: 1, h: 1),
           
           // Upper path (harder, but has ore)
-          TileData(type: 'block', x: 12, y: 12, w: 4, h: 1),
-          TileData(type: 'block', x: 20, y: 9, w: 4, h: 1),
-          TileData(type: 'block', x: 30, y: 11, w: 3, h: 1),
+          TileData(type: 'platform', x: 12, y: 12, w: 4, h: 1),
+          TileData(type: 'platform', x: 20, y: 9, w: 4, h: 1),
+          TileData(type: 'platform', x: 30, y: 11, w: 3, h: 1),
           
           // Obstacles on upper path
           TileData(type: 'spike', x: 21, y: 8, w: 1, h: 1),

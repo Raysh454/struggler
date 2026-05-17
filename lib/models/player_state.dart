@@ -1,3 +1,5 @@
+import '../game/config.dart';
+
 /// Tracks all mutable player state across the game session.
 class PlayerState {
   // --- Health ---
@@ -23,9 +25,9 @@ class PlayerState {
   int enemiesKilled;
 
   PlayerState({
-    this.maxHealth = 100.0,
-    this.maxResolve = 100.0,
-    this.swordDamage = 25.0,
+    this.maxHealth = GameConfig.playerMaxHealthDefault,
+    this.maxResolve = GameConfig.playerMaxResolveDefault,
+    this.swordDamage = GameConfig.playerSwordDamageDefault,
     this.oreCollected = 0,
     this.willpower = 0,
     this.currentLevel = 1,
