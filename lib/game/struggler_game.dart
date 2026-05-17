@@ -8,6 +8,7 @@ import '../models/player_state.dart';
 import '../models/game_state.dart';
 import 'config.dart';
 import 'components/player.dart';
+import 'components/cat.dart';
 import 'level/level_manager.dart';
 import 'level/level_theme.dart';
 import 'level/tile_grid.dart';
@@ -29,6 +30,19 @@ class StruggleGame extends FlameGame
   double _shakeTimer = 0;
   final Random _random = Random();
 
+  // Portal transition variables
+  int? _previousLevelId;
+  Vector2? _previousPlayerPosition;
+  
+  // Controls visibility notifier
+  final ValueNotifier<bool> showControlsNotifier = ValueNotifier(false);
+
+  // Track killed/collected entities to prevent farming/respawning on portal return
+  final Set<String> removedEntitiesKeys = {};
+  
+  // Track permanently collected diamonds across retries
+  final Set<String> collectedDiamondsKeys = {};
+
   // Callback for Flutter overlay management
   final void Function(String)? onOverlayChange;
 
@@ -48,6 +62,10 @@ class StruggleGame extends FlameGame
     camera.viewfinder.anchor = Anchor.center;
 
     await loadLevel(gameState.currentLevel);
+
+    // Pause game on start to display Main Menu
+    overlays.add('MainMenu');
+    pauseEngine();
   }
 
   /// Load a level by ID. Clears existing level and builds new one.
@@ -56,7 +74,9 @@ class StruggleGame extends FlameGame
     world.removeAll(world.children);
 
     // Get level data (test level for now, AI-generated later)
-    final levelData = LevelManager.createTestLevel(levelId);
+    final levelData = levelId == -1
+        ? LevelManager.createGuardianRealm()
+        : LevelManager.createTestLevel(levelId);
 
     // Pick a random theme for the level
     final themeType = _random.nextBool() ? ThemeType.lightRocks : ThemeType.darkRocks;
@@ -91,6 +111,10 @@ class StruggleGame extends FlameGame
     final spawnPos = LevelManager.getSpawnPosition(levelData);
     player = Player(position: spawnPos);
     world.add(player);
+
+    // Spawn companion cat "Hope" right next to player
+    final cat = CompanionCat(position: spawnPos - Vector2(16, 0));
+    world.add(cat);
 
     // Set up camera to follow player instantly at spawn
     camera.viewfinder.position = spawnPos;
@@ -146,6 +170,7 @@ class StruggleGame extends FlameGame
   }
 
   void onLevelComplete() {
+    removedEntitiesKeys.clear();
     gameState.completeLevel();
     if (gameState.currentLevel > 4) {
       gameState.currentLevel = 1; // Loop back to level 1 for test levels
@@ -156,6 +181,13 @@ class StruggleGame extends FlameGame
 
   /// Called when the player dies.
   void onPlayerDeath() {
+    removedEntitiesKeys.clear();
+    
+    // Save death location for LostWill spawning before currencies are reset
+    playerState.lostWillX = player.lastSafePosition?.x ?? player.position.x;
+    playerState.lostWillY = player.lastSafePosition?.y ?? player.position.y;
+    playerState.lostWillLevelId = gameState.currentLevel;
+
     playerState.resetForRetry();
     // Reload current level
     loadLevel(gameState.currentLevel);
@@ -165,5 +197,69 @@ class StruggleGame extends FlameGame
   void onScreenShake(double intensity) {
     _shakeIntensity = intensity;
     _shakeTimer = 0.15;
+  }
+
+  /// Transition the player between the active level and the Guardian's Realm.
+  void transitionThroughPortal({required bool isReturn}) {
+    if (isReturn) {
+      // Returning to main level from Guardian Realm
+      final targetLevel = _previousLevelId ?? 1;
+      final targetPos = _previousPlayerPosition;
+      
+      gameState.currentLevel = targetLevel;
+      loadLevel(targetLevel).then((_) {
+        if (targetPos != null) {
+          player.position.setFrom(targetPos);
+          // Let the cat snap behind the player instantly
+          world.children.whereType<CompanionCat>().forEach((c) {
+            c.position.setFrom(targetPos - Vector2(player.facingDirection * 24.0, 0));
+          });
+        }
+      });
+    } else {
+      // Entering Guardian Realm: save main level ID and player entry coordinates
+      _previousLevelId = gameState.currentLevel;
+      _previousPlayerPosition = player.position.clone();
+      
+      gameState.currentLevel = -1;
+      loadLevel(-1);
+    }
+  }
+
+  /// Open the Guardian Upgrades overlay.
+  void openGuardianUpgrades() {
+    showControlsNotifier.value = false;
+    pauseEngine();
+    overlays.add('GuardianUpgrades');
+  }
+
+  /// Close the Guardian Upgrades overlay and resume the game loop.
+  void closeGuardianUpgrades() {
+    showControlsNotifier.value = true;
+    resumeEngine();
+    overlays.remove('GuardianUpgrades');
+  }
+
+  /// Returns true if there are no solid platform blocks between [start] and [end].
+  bool hasLineOfSight(Vector2 start, Vector2 end) {
+    final grid = activeGrid;
+    if (grid == null) return true;
+
+    final dist = start.distanceTo(end);
+    if (dist < 4) return true; // Extremely close contact
+
+    final dir = (end - start).normalized();
+    const step = 8.0; // Sample every 8px (quarter of a tile)
+    
+    // Scan step-by-step from start to end
+    for (double d = step; d < dist - step; d += step) {
+      final point = start + dir * d;
+      final tx = (point.x / GameConfig.tileSize).floor();
+      final ty = (point.y / GameConfig.tileSize).floor();
+      if (grid.isSolid(tx, ty)) {
+        return false; // Obstacle found
+      }
+    }
+    return true;
   }
 }

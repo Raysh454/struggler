@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'game/struggler_game.dart';
+import 'screens/game_overlays.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,11 +44,27 @@ class _StruggleAppState extends State<StruggleApp> {
       home: Scaffold(
         body: Stack(
           children: [
-            // Game
-            GameWidget(game: _game),
+            // Game Widget with configured high-fidelity overlays
+            GameWidget(
+              game: _game,
+              overlayBuilderMap: {
+                'MainMenu': (context, StruggleGame game) => MainMenuOverlay(game: game),
+                'GuardianUpgrades': (context, StruggleGame game) => GuardianUpgradesOverlay(game: game),
+              },
+            ),
 
             // Touch controls overlay
-            _TouchControls(game: _game),
+            ValueListenableBuilder<bool>(
+              valueListenable: _game.showControlsNotifier,
+              builder: (context, showControls, child) {
+                // Hide touch controls when Main Menu or Upgrades screen is open
+                if (!showControls) {
+                  return const SizedBox.shrink();
+                }
+                return child!;
+              },
+              child: _TouchControls(game: _game),
+            ),
           ],
         ),
       ),
@@ -109,6 +126,19 @@ class _TouchControls extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    _ControlButton(
+                      icon: Icons.auto_awesome,
+                      label: 'INTRACT',
+                      onDown: () {
+                        if (game.player.currentPortal != null) {
+                          game.transitionThroughPortal(isReturn: game.player.currentPortal!.isReturn);
+                        } else if (game.player.currentGuardian != null) {
+                          game.openGuardianUpgrades();
+                        }
+                      },
+                      color: const Color(0xFF00E5FF),
+                    ),
+                    const SizedBox(width: 8),
                     _ControlButton(
                       icon: Icons.whatshot,
                       label: 'RESOLVE',

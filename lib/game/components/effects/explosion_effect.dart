@@ -18,8 +18,9 @@ class ExplosionEffect extends PositionComponent
   ExplosionEffect({
     required Vector2 center,
     this.splashRadius = GameConfig.nightbornExplosionRadius,
-    this.damage = GameConfig.nightbornExplosionDamage,
-  }) : super(
+    double damage = GameConfig.nightbornExplosionDamage,
+  }) : damage = damage * GameConfig.enemyDamageMultiplier,
+       super(
           position: center - Vector2.all(splashRadius),
           size: Vector2.all(splashRadius * 2),
         );

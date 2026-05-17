@@ -1,0 +1,102 @@
+Resolving dependencies...
+Downloading packages...
+  matcher 0.12.19 (0.12.20 available)
+  meta 1.17.0 (1.18.2 available)
+  test_api 0.7.10 (0.7.12 available)
+  vector_math 2.2.0 (2.3.0 available)
+Got dependencies!
+4 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading /home/sherry/Documents/Programming/Dart/Struggler/test/game/level/level_data_test.dart
+lib/game/level/level_manager.dart:90:16: Error: The getter 'removedEntitiesKeys' isn't defined for the type 'FlameGame<World>'.
+ - 'FlameGame' is from 'package:flame/src/game/flame_game.dart' ('../../../../.pub-cache/hosted/pub.dev/flame-1.37.0/lib/src/game/flame_game.dart').
+ - 'World' is from 'package:flame/src/camera/world.dart' ('../../../../.pub-cache/hosted/pub.dev/flame-1.37.0/lib/src/camera/world.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'removedEntitiesKeys'.
+      if (game.removedEntitiesKeys.contains(key)) {
+               ^^^^^^^^^^^^^^^^^^^
+lib/game/level/level_manager.dart:101:16: Error: The getter 'removedEntitiesKeys' isn't defined for the type 'FlameGame<World>'.
+ - 'FlameGame' is from 'package:flame/src/game/flame_game.dart' ('../../../../.pub-cache/hosted/pub.dev/flame-1.37.0/lib/src/game/flame_game.dart').
+ - 'World' is from 'package:flame/src/camera/world.dart' ('../../../../.pub-cache/hosted/pub.dev/flame-1.37.0/lib/src/camera/world.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'removedEntitiesKeys'.
+      if (game.removedEntitiesKeys.contains(key)) {
+               ^^^^^^^^^^^^^^^^^^^
+00:00 +0 -1: loading /home/sherry/Documents/Programming/Dart/Struggler/test/widget_test.dart [E]
+  Failed to load "/home/sherry/Documents/Programming/Dart/Struggler/test/widget_test.dart":
+  Compilation failed for testPath=/home/sherry/Documents/Programming/Dart/Struggler/test/widget_test.dart: lib/game/level/level_manager.dart:90:16: Error: The getter 'removedEntitiesKeys' isn't defined for the type 'FlameGame<World>'.
+   - 'FlameGame' is from 'package:flame/src/game/flame_game.dart' ('../../../../.pub-cache/hosted/pub.dev/flame-1.37.0/lib/src/game/flame_game.dart').
+   - 'World' is from 'package:flame/src/camera/world.dart' ('../../../../.pub-cache/hosted/pub.dev/flame-1.37.0/lib/src/camera/world.dart').
+  Try correcting the name to the name of an existing getter, or defining a getter or field named 'removedEntitiesKeys'.
+        if (game.removedEntitiesKeys.contains(key)) {
+                 ^^^^^^^^^^^^^^^^^^^
+  lib/game/level/level_manager.dart:101:16: Error: The getter 'removedEntitiesKeys' isn't defined for the type 'FlameGame<World>'.
+   - 'FlameGame' is from 'package:flame/src/game/flame_game.dart' ('../../../../.pub-cache/hosted/pub.dev/flame-1.37.0/lib/src/game/flame_game.dart').
+   - 'World' is from 'package:flame/src/camera/world.dart' ('../../../../.pub-cache/hosted/pub.dev/flame-1.37.0/lib/src/camera/world.dart').
+  Try correcting the name to the name of an existing getter, or defining a getter or field named 'removedEntitiesKeys'.
+        if (game.removedEntitiesKeys.contains(key)) {
+                 ^^^^^^^^^^^^^^^^^^^
+  .
+00:00 +0 -2: loading /home/sherry/Documents/Programming/Dart/Struggler/test/game/level/level_data_test.dart [E]
+  Error: The Dart compiler exited unexpectedly.
+  package:flutter_tools/src/base/common.dart 34:3  throwToolExit
+  package:flutter_tools/src/compile.dart 939:11    DefaultResidentCompiler._compile.<fn>
+  dart:async/zone_root.dart 48:47                  _rootRunUnary
+  dart:async/zone.dart 733:19                      _CustomZone.runUnary
+  dart:async/future_impl.dart 948:45               Future._propagateToListeners.handleValueCallback
+  dart:async/future_impl.dart 977:13               Future._propagateToListeners
+  dart:async/future_impl.dart 862:9                Future._propagateToListeners
+  dart:async/future_impl.dart 720:5                Future._completeWithValue
+  dart:async/future_impl.dart 804:7                Future._asyncCompleteWithValue.<fn>
+  dart:async/zone_root.dart 35:13                  _rootRun
+  dart:async/zone.dart 726:19                      _CustomZone.run
+  dart:async/zone.dart 625:7                       _CustomZone.runGuarded
+  dart:async/zone.dart 666:23                      _CustomZone.bindCallbackGuarded.<fn>
+  dart:async/schedule_microtask.dart 40:35         _microtaskLoop
+  dart:async/schedule_microtask.dart 49:5          _startMicrotaskLoop
+  dart:isolate-patch/isolate_patch.dart 127:13     _runPendingImmediateCallback
+  dart:isolate-patch/isolate_patch.dart 194:5      _RawReceivePort._handleMessage
+  
+00:00 +0 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/game/level/level_data_test.dart: LevelData JSON Serialization TileData fromJson/toJson
+00:00 +1 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/game/level/level_data_test.dart: LevelData JSON Serialization EnemyData fromJson/toJson
+00:00 +2 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/game/level/level_data_test.dart: LevelData JSON Serialization LevelData fromJson/toJson full roundtrip
+00:00 +3 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/game/level/level_data_test.dart: LevelData JSON Serialization LevelData.fromJsonString
+00:01 +4 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState initialization starts at level 1 with 20 max levels
+00:01 +5 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState initialization starts with empty completion times
+00:01 +6 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState initialization accepts custom initial values
+00:01 +7 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState narrativeArc levels 1-5 are awakening
+00:01 +8 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState narrativeArc levels 6-14 are realization
+00:01 +9 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState narrativeArc levels 15-20 are confrontation
+00:01 +10 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState narrativeArc levels beyond 20 are endless
+00:01 +11 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState hasFixedDialogue fixed dialogues at levels 1, 5, 10, 15, 20
+00:01 +12 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState hasFixedDialogue no fixed dialogue at other levels
+00:01 +13 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState level timing startLevel records start time
+00:01 +14 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState level timing completeLevel increments level and records time
+00:01 +15 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState level timing completeLevel returns 0 if startLevel was not called
+00:01 +16 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/game_state_test.dart: GameState level timing multiple completions accumulate times
+00:01 +17 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState initialization has correct default values
+00:01 +18 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState initialization accepts custom initial values
+00:01 +19 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState takeDamage reduces health by the damage amount
+00:01 +20 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState takeDamage returns true when health reaches 0
+00:01 +21 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState takeDamage returns true when damage exceeds health
+00:01 +22 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState takeDamage health does not go below 0
+00:01 +23 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState takeDamage halves damage during Indomitable state
+00:01 +24 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState takeDamage Indomitable halved damage does not prevent death from massive hit
+00:01 +25 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState heal restores health
+00:01 +26 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState heal does not exceed maxHealth
+00:01 +27 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState heal healing at full health does nothing
+00:01 +28 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState addResolve increases resolve
+00:01 +29 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState addResolve returns true when resolve reaches max
+00:01 +30 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState addResolve clamps resolve to maxResolve
+00:01 +31 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState addResolve accumulates across multiple calls
+00:01 +32 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState effectiveDamage returns base damage normally
+00:01 +33 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState effectiveDamage returns doubled damage during Indomitable state
+00:01 +34 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState resetForRetry restores health to max
+00:01 +35 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState resetForRetry zeroes resolve and disables Indomitable
+00:01 +36 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState resetForRetry restores stamina to maxStamina
+00:01 +37 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState resetForRetry does NOT reset death count or enemies killed
+00:01 +38 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState toTelemetry returns correct snapshot with default values
+00:01 +39 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState toTelemetry reflects state changes accurately
+00:01 +40 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState Guardian Upgrades upgradeHealth increases maxHealth and costs willpower with 100 * 2^(level-1) math
+00:01 +41 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState Guardian Upgrades upgradeResolve increases maxResolve and costs willpower
+00:01 +42 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState Guardian Upgrades upgradeSword increases swordDamage and costs willpower + 1 diamond
+00:01 +43 -2: /home/sherry/Documents/Programming/Dart/Struggler/test/models/player_state_test.dart: PlayerState Guardian Upgrades upgrade fails with insufficient resources
+00:01 +44 -2: Some tests failed.

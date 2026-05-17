@@ -6,18 +6,22 @@ import 'dart:math';
 
 import '../struggler_game.dart';
 
-/// Ore pickup. Used for upgrading at the Guardian. One per level, hard to reach.
-class OrePickup extends PositionComponent with CollisionCallbacks, HasGameReference<StruggleGame> {
+/// Diamond pickup. Used for upgrading at the Guardian. One per level, hard to reach.
+class DiamondPickup extends PositionComponent with CollisionCallbacks, HasGameReference<StruggleGame> {
   double _sparkleTimer = 0;
   bool collected = false;
   late Sprite _sprite;
 
-  OrePickup({
+  late final Vector2 initialPosition;
+
+  DiamondPickup({
     required Vector2 position,
   }) : super(
           position: position,
-          size: GameConfig.orePickupSize,
-        );
+          size: GameConfig.diamondPickupSize,
+        ) {
+    initialPosition = position.clone();
+  }
 
   @override
   Future<void> onLoad() async {
@@ -40,14 +44,14 @@ class OrePickup extends PositionComponent with CollisionCallbacks, HasGameRefere
     // Render the sprite
     _sprite.render(canvas, size: size);
 
-    // Optional: Keep a subtle glow behind it
+    // Subtle cyan/blue glow behind it
     final cx = size.x / 2;
     final cy = size.y / 2;
     canvas.drawCircle(
       Offset(cx, cy),
       size.x * 0.45,
       Paint()
-        ..color = const Color(0x33FFB028)
+        ..color = const Color(0x334488FF)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
     );
   }

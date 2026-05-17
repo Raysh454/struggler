@@ -18,8 +18,11 @@ import '../components/enemies/nightborne_enemy.dart';
 import '../components/enemies/bringer_enemy.dart';
 import '../components/enemies/architect_boss.dart';
 import '../components/health_pickup.dart';
-import '../components/ore_pickup.dart';
+import '../components/diamond_pickup.dart';
+import '../components/lost_will_pickup.dart';
 import '../components/exit_portal.dart';
+import '../components/guardian.dart';
+import '../components/guardian_portal.dart';
 import 'level_theme.dart';
 
 /// Converts a LevelData JSON blueprint into Flame game components.
@@ -29,7 +32,7 @@ class LevelManager {
 
   /// Build all components for a level blueprint.
   static Future<List<Component>> buildLevel(
-    FlameGame game,
+    StruggleGame game,
     LevelData data,
     LevelTheme theme,
   ) async {
@@ -84,26 +87,67 @@ class LevelManager {
 
     // --- Enemies ---
     for (final enemy in validatedData.enemies) {
-      components.add(_buildEnemy(enemy));
+      final key = '${validatedData.levelId}_enemy_${enemy.x}_${enemy.y}';
+      if (game.removedEntitiesKeys.contains(key)) {
+        continue; // Already killed, do not respawn!
+      }
+      final enemyComp = _buildEnemy(enemy);
+      enemyComp.spawnData = enemy;
+      components.add(enemyComp);
     }
 
     // --- Pickups ---
     for (final pickup in validatedData.pickups) {
+      final key = '${validatedData.levelId}_pickup_${pickup.x.round()}_${pickup.y.round()}';
+      if (game.removedEntitiesKeys.contains(key) || game.collectedDiamondsKeys.contains(key)) {
+        continue; // Already collected, do not respawn!
+      }
       final pos = Vector2(pickup.x * tileSize, pickup.y * tileSize);
       switch (pickup.type) {
         case 'health':
           components.add(HealthPickup(position: pos));
           break;
-        case 'ore':
-          components.add(OrePickup(position: pos));
+        case 'diamond':
+        case 'ore': // Keep fallback for compatibility
+          components.add(DiamondPickup(position: pos));
           break;
       }
     }
 
+    // --- Lost Will Spawn ---
+    if (validatedData.levelId == game.playerState.lostWillLevelId && game.playerState.lostWillpower > 0) {
+      if (game.playerState.lostWillX != null && game.playerState.lostWillY != null) {
+        components.add(LostWillPickup(
+          position: Vector2(game.playerState.lostWillX!, game.playerState.lostWillY!),
+          willpowerAmount: game.playerState.lostWillpower,
+        ));
+      }
+    }
+
+    // --- Dynamic Guardian & Portal Spawning ---
+    if (validatedData.levelId == -1) {
+      // Serene Guardian Realm: Spawn return portal at entrance and Guardian in the center
+      components.add(GuardianPortal(
+        position: Vector2(2 * tileSize, 7.5 * tileSize),
+        isReturn: true,
+      ));
+      components.add(Guardian(
+        position: Vector2(7 * tileSize, 7.0 * tileSize),
+      ));
+    } else {
+      // Normal Level: Spawn entrance portal close to spawn point
+      components.add(GuardianPortal(
+        position: Vector2((validatedData.spawn.x + 2) * tileSize, (validatedData.spawn.y - 0.5) * tileSize),
+        isReturn: false,
+      ));
+    }
+
     // --- Exit portal ---
-    components.add(ExitPortal(
-      position: Vector2(validatedData.exit.x * tileSize, validatedData.exit.y * tileSize),
-    ));
+    if (validatedData.levelId != -1) {
+      components.add(ExitPortal(
+        position: Vector2(validatedData.exit.x * tileSize, validatedData.exit.y * tileSize),
+      ));
+    }
 
     return components;
   }
@@ -161,7 +205,7 @@ class LevelManager {
         ],
         pickups: [
           PickupData(type: 'health', x: 35, y: 15),
-          PickupData(type: 'ore', x: 26, y: 9),
+          PickupData(type: 'diamond', x: 26, y: 9),
         ],
         architectDialogue: "So... you've decided to struggle. How quaint.",
       );
@@ -219,7 +263,7 @@ class LevelManager {
         ],
         pickups: [
           PickupData(type: 'health', x: 22, y: 20),
-          PickupData(type: 'ore', x: 6, y: 15),
+          PickupData(type: 'diamond', x: 6, y: 15),
         ],
         architectDialogue: "You survived the pit. Let's see how you handle heights.",
       );
@@ -268,7 +312,7 @@ class LevelManager {
         ],
         pickups: [
           PickupData(type: 'health', x: 45, y: 19),
-          PickupData(type: 'ore', x: 38, y: 17),
+          PickupData(type: 'diamond', x: 38, y: 17),
         ],
         architectDialogue: "Fire purifies. Let's see what is left of you.",
       );
@@ -315,11 +359,36 @@ class LevelManager {
         pickups: [
           PickupData(type: 'health', x: 10, y: 15),
           PickupData(type: 'health', x: 24, y: 14),
-          PickupData(type: 'ore', x: 22, y: 7),
+          PickupData(type: 'diamond', x: 22, y: 7),
         ],
         architectDialogue: "A gauntlet of my own design. Do not disappoint me.",
       );
     }
+  }
+
+  /// Creates a serene 15x10 sub-level representing the Guardian's Realm.
+  static LevelData createGuardianRealm() {
+    return LevelData(
+      levelId: -1,
+      difficulty: 0.0,
+      width: 15,
+      height: 10,
+      spawn: (x: 2, y: 7),
+      exit: (x: 13, y: 7), // exit portal is ignored or acts as normal exit
+      tiles: [
+        // Floor
+        TileData(type: 'block', x: 0, y: 9, w: 15, h: 1),
+        // Ceiling
+        TileData(type: 'block', x: 0, y: 0, w: 15, h: 1),
+        // Left wall
+        TileData(type: 'block', x: 0, y: 1, w: 1, h: 8),
+        // Right wall
+        TileData(type: 'block', x: 14, y: 1, w: 1, h: 8),
+      ],
+      enemies: [],
+      pickups: [],
+      architectDialogue: "You have stepped into the Guardian's sanctuary. Peace and strength await.",
+    );
   }
 
   /// Factory mapping of JSON EnemyData to concrete dynamic subclasses.
@@ -327,53 +396,65 @@ class LevelManager {
   static BaseEnemy _buildEnemy(EnemyData data) {
     final pos = Vector2(data.x * tileSize, data.y * tileSize);
     final type = data.type.toLowerCase();
+    final BaseEnemy enemy;
 
     switch (type) {
       case 'skeleton':
       case 'basic': // Legacy alias
-        return SkeletonEnemy(
+        enemy = SkeletonEnemy(
           position: pos,
         );
+        break;
 
       case 'goblin':
       case 'fast': // Legacy alias
-        return GoblinEnemy(
+        enemy = GoblinEnemy(
           position: pos,
         );
+        break;
 
       case 'nightborne':
       case 'nightborn':
       case 'heavy': // Legacy alias
-        return NightborneEnemy(
+        enemy = NightborneEnemy(
           position: pos,
         );
+        break;
 
       case 'bringer':
-        return BringerEnemy(
+        enemy = BringerEnemy(
           position: pos,
         );
+        break;
 
       case 'archer':
       case 'arcane_archer':
-        return ArcaneArcherEnemy(
+        enemy = ArcaneArcherEnemy(
           position: pos,
         );
+        break;
 
       case 'wizard':
-        return WizardEnemy(
+        enemy = WizardEnemy(
           position: pos,
         );
+        break;
 
       case 'architect':
-        return ArchitectBoss(
+        enemy = ArchitectBoss(
           position: pos,
         );
+        break;
 
       default:
         // Absolute fallback: skeleton
-        return SkeletonEnemy(
+        enemy = SkeletonEnemy(
           position: pos,
         );
+        break;
     }
+
+    enemy.spawnData = data;
+    return enemy;
   }
 }

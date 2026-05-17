@@ -8,7 +8,10 @@ import '../components/block.dart';
 import '../components/lava.dart';
 import '../components/spike.dart';
 import '../components/health_pickup.dart';
-import '../components/ore_pickup.dart';
+import '../components/diamond_pickup.dart';
+import '../components/lost_will_pickup.dart';
+import '../components/guardian.dart';
+import '../components/guardian_portal.dart';
 import '../components/exit_portal.dart';
 import '../components/enemy.dart';
 import '../struggler_game.dart';
@@ -37,7 +40,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   static const double maxFallSpeed = GameConfig.playerMaxFallSpeed;
   Vector2 velocity = Vector2.zero();
   bool isOnGround = false;
+  Vector2? lastSafePosition;
   int _facingDirection = 1; // 1 = right, -1 = left
+  int get facingDirection => _facingDirection;
   
   // --- Jump State ---
   int _jumpsRemaining = GameConfig.playerMaxJumps;
@@ -68,6 +73,11 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   double _comboWindowTimer = 0;
   bool _comboQueued = false;
   double _airHangTimer = 0;
+  
+  // --- Guardian Realm and Portals ---
+  GuardianPortal? currentPortal;
+  ExitPortal? currentExitPortal;
+  Guardian? currentGuardian;
   double _attackTimer = 0;
   double _attackDamageDelayTimer = 0; // Delay until active swing frame to sync damage
   double _attackFreezeTimer = 0; // Locks player movement during swing, but allows early exit
@@ -288,6 +298,15 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     } else {
       anim.current = PlayerAnimationState.idle;
     }
+
+    if (isOnGround && !_isDead) {
+      final isOverlappingHazard = game.world.children.any((c) => 
+        (c is Lava || c is Spike) && toRect().overlaps((c as PositionComponent).toRect())
+      );
+      if (!isOverlappingHazard) {
+        lastSafePosition = position.clone();
+      }
+    }
   }
 
   @override
@@ -306,6 +325,20 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       }
       if (event.logicalKey == LogicalKeyboardKey.keyR) {
         activateIndomitable();
+      }
+      if (event.logicalKey == LogicalKeyboardKey.keyE) {
+        if (currentPortal != null) {
+          game.transitionThroughPortal(isReturn: currentPortal!.isReturn);
+        } else if (currentExitPortal != null) {
+          final enemiesRemaining = game.world.children.whereType<BaseEnemy>().where((e) => !e.isDead).length;
+          if (enemiesRemaining == 0) {
+            game.onLevelComplete();
+          } else {
+            game.onScreenShake(2.0); // Mild camera shake to signal portal is locked
+          }
+        } else if (currentGuardian != null) {
+          game.openGuardianUpgrades();
+        }
       }
     }
     
@@ -382,7 +415,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
             // Air jump (double jump)
             //game.playerState.stamina -= staminaCost;
             velocity.y = jumpForce;
-            _jumpsRemaining--;
+            _jumpsRemaining = 0;
             _jumpBufferTimer = 0;
           }
         }
@@ -504,6 +537,13 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     for (final enemy in enemies) {
       final enemyRect = enemy.toRect();
       if (attackArea.overlaps(enemyRect)) {
+        // Line of sight check to avoid hitting through solid walls
+        final myCenter = position + size / 2;
+        final enemyCenter = enemy.position + enemy.size / 2;
+        if (!game.hasLineOfSight(myCenter, enemyCenter)) {
+          continue;
+        }
+
         final damage = game.playerState.effectiveDamage;
         final killed = enemy.takeDamage(damage);
         if (game.playerState.isIndomitable) {
@@ -557,7 +597,8 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   void _applyVelocity(double dt) {
     position += velocity * dt;
     // Fall into void = death
-    if (position.y > 4000) {
+    final mapBottom = (game.activeGrid?.height ?? 25) * GameConfig.tileSize;
+    if (position.y > mapBottom + 64) {
       _die();
     }
   }
@@ -575,17 +616,33 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       other.collected = true;
       other.removeFromParent();
       game.playerState.heal(other.healAmount);
-    } else if (other is OrePickup && !other.collected) {
+      
+      final tileX = (other.initialPosition.x / GameConfig.tileSize).round();
+      final tileY = (other.initialPosition.y / GameConfig.tileSize).round();
+      final key = '${game.gameState.currentLevel}_pickup_${tileX}_${tileY}';
+      game.removedEntitiesKeys.add(key);
+    } else if (other is DiamondPickup && !other.collected) {
       other.collected = true;
       other.removeFromParent();
-      game.playerState.oreCollected++;
-    } else if (other is ExitPortal) {
-      final enemiesRemaining = game.world.children.whereType<BaseEnemy>().where((e) => !e.isDead).length;
-      if (enemiesRemaining == 0) {
-        game.onLevelComplete();
-      } else {
-        game.onScreenShake(2.0); // Mild camera shake to signal portal is locked
-      }
+      game.playerState.diamondsCollected++;
+
+      final tileX = (other.initialPosition.x / GameConfig.tileSize).round();
+      final tileY = (other.initialPosition.y / GameConfig.tileSize).round();
+      final key = '${game.gameState.currentLevel}_pickup_${tileX}_${tileY}';
+      game.collectedDiamondsKeys.add(key);
+    } else if (other is LostWillPickup && !other.collected) {
+      other.collected = true;
+      other.removeFromParent();
+      
+      // Restore lost willpower
+      game.playerState.willpower += other.willpowerAmount;
+      
+      // Erase the bloodstain completely from the player state
+      game.playerState.lostWillpower = 0;
+      game.playerState.lostWillX = null;
+      game.playerState.lostWillY = null;
+      game.playerState.lostWillLevelId = null;
+
     }
   }
 
@@ -716,9 +773,8 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
   /// Activate the Indomitable state (called when resolve is full).
   void activateIndomitable() {
-    if (game.playerState.resolve >= game.playerState.maxResolve && !game.playerState.isIndomitable) {
+    if (game.playerState.resolve >= 100.0 && !game.playerState.isIndomitable) {
       game.playerState.isIndomitable = true;
-      game.playerState.resolve = game.playerState.maxResolve;
     }
   }
 

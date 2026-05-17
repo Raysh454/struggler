@@ -80,7 +80,7 @@ class EnemyData {
 
 /// Represents a pickup item in the level blueprint.
 class PickupData {
-  final String type; // 'health', 'ore'
+  final String type; // 'health', 'diamond'
   final double x;
   final double y;
 

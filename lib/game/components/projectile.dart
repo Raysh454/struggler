@@ -22,9 +22,10 @@ abstract class Projectile extends PositionComponent
   Projectile({
     required Vector2 position,
     required Vector2 size,
-    required this.damage,
+    required double damage,
     required this.maxRange,
-  }) : super(position: position, size: size);
+  }) : damage = damage * GameConfig.enemyDamageMultiplier,
+       super(position: position, size: size);
 
   @override
   Future<void> onLoad() async {

@@ -13,13 +13,17 @@ class HealthPickup extends PositionComponent with CollisionCallbacks, HasGameRef
   bool collected = false;
   late Sprite _sprite;
 
+  late final Vector2 initialPosition;
+
   HealthPickup({
     required Vector2 position,
     this.healAmount = GameConfig.healthPickupHealAmountDefault,
   }) : super(
           position: position,
           size: GameConfig.healthPickupSize,
-        );
+        ) {
+    initialPosition = position.clone();
+  }
 
   @override
   Future<void> onLoad() async {

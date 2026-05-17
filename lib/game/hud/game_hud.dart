@@ -57,6 +57,13 @@ class GameHud extends PositionComponent with HasGameReference<StruggleGame> {
       fillColor: resolveColor,
       bgColor: const Color(0xFF111133),
     );
+    _drawText(
+      canvas,
+      '${playerState.resolve.round()}/${playerState.maxResolve.round()}',
+      185,
+      22,
+      10,
+    );
 
     // --- Stamina Bar ---
     _drawLabel(canvas, 'ST', 0, 44);
@@ -103,14 +110,14 @@ class GameHud extends PositionComponent with HasGameReference<StruggleGame> {
       color: const Color(0xFF888888),
     );
 
-    // --- Ore count ---
+    // --- Diamond count ---
     _drawText(
       canvas,
-      'ORE: ${playerState.oreCollected}',
+      'DIAMONDS: ${playerState.diamondsCollected}',
       110,
       88,
       10,
-      color: const Color(0xFFFFB028),
+      color: const Color(0xFF00E5FF), // Cyan/Diamond color
     );
 
     // --- Willpower count ---

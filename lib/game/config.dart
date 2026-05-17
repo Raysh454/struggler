@@ -65,6 +65,8 @@ class GameConfig {
   // --- Enemy Configs ---
   static const double enemyGravity = 900.0;
   static const double enemyHurtDuration = 0.4;
+  static const double enemyDamageMultiplier = 1.0;
+  static const double enemyHealthMultiplier = 1.0;
 
   static const double enemySkeletonHurtDuration = 0.4;
   static const double enemySkeletonStaggerForce = 30;
@@ -209,10 +211,15 @@ class GameConfig {
   // --- Pickup Settings ---
   static const double healthPickupHealAmountDefault = 30.0;
   static final Vector2 healthPickupSize = Vector2.all(10);
-  static final Vector2 orePickupSize = Vector2.all(10);
+  static final Vector2 diamondPickupSize = Vector2.all(10);
 
   // --- Portal Settings ---
   static final Vector2 exitPortalSize = Vector2(32, 48);
+  static final Vector2 guardianPortalSize = Vector2(32, 48);
+
+  // --- Guardian & Cat Settings ---
+  static final Vector2 guardianSize = Vector2(48, 64);
+  static final Vector2 catSize = Vector2(24, 20);
 
   // --- Decoration Scales & Offsets (PlatformBlock) ---
   // Grass

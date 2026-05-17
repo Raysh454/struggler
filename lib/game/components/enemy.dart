@@ -28,6 +28,9 @@ abstract class BaseEnemy extends PositionComponent
   final double contactDamage;
   bool isDead = false;
 
+  /// Original grid coordinates mapping to prevent respawns
+  dynamic spawnData;
+
   /// The willpower (will) rewarded to the player when this enemy dies.
   int get willpowerReward;
 
@@ -52,9 +55,11 @@ abstract class BaseEnemy extends PositionComponent
   BaseEnemy({
     required Vector2 position,
     required Vector2 size,
-    this.maxHealth = 50,
-    this.contactDamage = 10,
-  })  : health = maxHealth,
+    double maxHealth = 50,
+    double contactDamage = 10,
+  })  : maxHealth = maxHealth * GameConfig.enemyHealthMultiplier,
+        contactDamage = contactDamage * GameConfig.enemyDamageMultiplier,
+        health = maxHealth * GameConfig.enemyHealthMultiplier,
         super(position: position, size: size);
 
   @override
@@ -277,6 +282,10 @@ abstract class BaseEnemy extends PositionComponent
     hurtTimer = GameConfig.enemyHurtDuration;
     if (health <= 0) {
       isDead = true;
+      if (spawnData != null && game.gameState.currentLevel != -1) {
+        final key = '${game.gameState.currentLevel}_enemy_${spawnData.x}_${spawnData.y}';
+        game.removedEntitiesKeys.add(key);
+      }
       onDeath();
       return true;
     }

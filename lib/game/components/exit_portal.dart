@@ -1,14 +1,17 @@
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import 'package:flutter/widgets.dart';
 import '../config.dart';
 import '../struggler_game.dart';
 import 'enemy.dart';
+import 'player.dart';
 import 'dart:ui';
 import 'dart:math';
 
 /// Level exit portal. Touching this completes the level.
 class ExitPortal extends PositionComponent with CollisionCallbacks, HasGameReference<StruggleGame> {
   double _animTimer = 0;
+  bool playerOverlapping = false;
 
   ExitPortal({
     required Vector2 position,
@@ -20,6 +23,26 @@ class ExitPortal extends PositionComponent with CollisionCallbacks, HasGameRefer
   @override
   Future<void> onLoad() async {
     add(RectangleHitbox());
+  }
+
+  @override
+  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+    super.onCollisionStart(intersectionPoints, other);
+    if (other is Player) {
+      other.currentExitPortal = this;
+      playerOverlapping = true;
+    }
+  }
+
+  @override
+  void onCollisionEnd(PositionComponent other) {
+    super.onCollisionEnd(other);
+    if (other is Player) {
+      if (other.currentExitPortal == this) {
+        other.currentExitPortal = null;
+      }
+      playerOverlapping = false;
+    }
   }
 
   @override
@@ -65,6 +88,27 @@ class ExitPortal extends PositionComponent with CollisionCallbacks, HasGameRefer
             : const Color(0x4464C8FF)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
     );
+
+    // "E" key interact prompt if player overlaps
+    if (playerOverlapping) {
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: isLocked ? 'Clear all enemies ' : 'Interact to exit',
+          style: const TextStyle(
+            color: Color(0xFFFFFFFF),
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            backgroundColor: Color(0x99000000),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas, 
+        Offset(cx - textPainter.width / 2, -15),
+      );
+    }
 
     // Center bright point
     canvas.drawCircle(

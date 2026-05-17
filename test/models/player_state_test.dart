@@ -20,7 +20,7 @@ void main() {
         expect(state.swordDamage, 25.0);
         expect(state.isIndomitable, false);
         expect(state.perfectDodges, 0);
-        expect(state.oreCollected, 0);
+        expect(state.diamondsCollected, 0);
         expect(state.willpower, 0);
         expect(state.deathCount, 0);
         expect(state.currentLevel, 1);
@@ -33,7 +33,7 @@ void main() {
           maxResolve: 50,
           maxStamina: 150,
           swordDamage: 40,
-          oreCollected: 3,
+          diamondsCollected: 3,
           willpower: 10,
           currentLevel: 5,
         );
@@ -43,7 +43,7 @@ void main() {
         expect(custom.maxStamina, 150.0);
         expect(custom.stamina, 150.0);
         expect(custom.swordDamage, 40.0);
-        expect(custom.oreCollected, 3);
+        expect(custom.diamondsCollected, 3);
         expect(custom.willpower, 10);
         expect(custom.currentLevel, 5);
       });
@@ -183,7 +183,7 @@ void main() {
         expect(telemetry['current_level'], 1);
         expect(telemetry['enemies_killed'], 0);
         expect(telemetry['perfect_dodges'], 0);
-        expect(telemetry['ore_collected'], 0);
+        expect(telemetry['diamonds_collected'], 0);
       });
 
       test('reflects state changes accurately', () {
@@ -193,7 +193,7 @@ void main() {
         state.currentLevel = 7;
         state.enemiesKilled = 15;
         state.perfectDodges = 4;
-        state.oreCollected = 2;
+        state.diamondsCollected = 2;
 
         final telemetry = state.toTelemetry();
         expect(telemetry['health_percent'], 70);
@@ -202,7 +202,58 @@ void main() {
         expect(telemetry['current_level'], 7);
         expect(telemetry['enemies_killed'], 15);
         expect(telemetry['perfect_dodges'], 4);
-        expect(telemetry['ore_collected'], 2);
+        expect(telemetry['diamonds_collected'], 2);
+      });
+    });
+
+    group('Guardian Upgrades', () {
+      test('upgradeHealth increases maxHealth and costs willpower with 100 * 2^(level-1) math', () {
+        state.willpower = 250;
+        final success = state.upgradeHealth();
+        expect(success, true);
+        expect(state.healthUpgradeLevel, 2);
+        expect(state.maxHealth, 120.0);
+        expect(state.health, 120.0);
+        expect(state.willpower, 150); // 250 - 100 (Level 1 cost: 100)
+
+        // Upgrade again (Level 2 cost: 200)
+        final success2 = state.upgradeHealth();
+        expect(success2, false); // Not enough willpower (needs 200, has 150)
+        
+        state.willpower = 200;
+        final success3 = state.upgradeHealth();
+        expect(success3, true);
+        expect(state.healthUpgradeLevel, 3);
+        expect(state.maxHealth, 140.0);
+        expect(state.willpower, 0);
+      });
+
+      test('upgradeResolve increases maxResolve and costs willpower', () {
+        state.willpower = 150;
+        final success = state.upgradeResolve();
+        expect(success, true);
+        expect(state.resolveUpgradeLevel, 2);
+        expect(state.maxResolve, 120.0);
+        expect(state.willpower, 50); // 150 - 100
+      });
+
+      test('upgradeSword increases swordDamage and costs willpower + 1 diamond', () {
+        state.willpower = 150;
+        state.diamondsCollected = 2;
+        final success = state.upgradeSword();
+        expect(success, true);
+        expect(state.swordUpgradeLevel, 2);
+        expect(state.swordDamage, 30.0); // 25 + 5
+        expect(state.diamondsCollected, 1);
+        expect(state.willpower, 50); // 150 - 100
+      });
+
+      test('upgrade fails with insufficient resources', () {
+        state.willpower = 50;
+        final success = state.upgradeHealth();
+        expect(success, false);
+        expect(state.healthUpgradeLevel, 1);
+        expect(state.maxHealth, 100.0);
       });
     });
   });

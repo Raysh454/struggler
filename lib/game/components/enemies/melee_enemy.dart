@@ -210,12 +210,17 @@ abstract class MeleeEnemy extends BaseEnemy {
     if (dx <= attackRange + GameConfig.enemyAttackReachPadding &&
         dy <= maxVerticalDiff &&
         isPlayerInFront) {
-      if (!player.isInvincible) {
-        player.receiveDamage(contactDamage);
-      } else {
-        // Reward perfect dodge if invincible during the actual hit frame!
-        game.playerState.perfectDodges++;
-        //game.playerState.addResolve(25);
+      // Line of sight check to avoid hitting player through solid walls
+      final myCenter = position + size / 2;
+      final playerCenterPos = player.position + player.size / 2;
+      if (game.hasLineOfSight(myCenter, playerCenterPos)) {
+        if (!player.isInvincible) {
+          player.receiveDamage(contactDamage);
+        } else {
+          // Reward perfect dodge if invincible during the actual hit frame!
+          game.playerState.perfectDodges++;
+          //game.playerState.addResolve(25);
+        }
       }
     }
     _swingTarget = null;
