@@ -9,6 +9,7 @@ import '../models/game_state.dart';
 import 'components/player.dart';
 import 'level/level_manager.dart';
 import 'level/level_theme.dart';
+import 'level/tile_grid.dart';
 import 'hud/game_hud.dart';
 import 'package:flame/parallax.dart';
 import 'package:flutter/widgets.dart';
@@ -19,6 +20,7 @@ class StruggleGame extends FlameGame
   late Player player;
   late PlayerState playerState;
   late GameState gameState;
+  TileGrid? activeGrid;
   GameHud? _hud;
 
   // Screen shake
@@ -115,12 +117,6 @@ class StruggleGame extends FlameGame
     // Keep parallax updated with camera position
     if (_bgComponent != null) {
       // Set the base velocity to match camera movement for the parallax effect.
-      // Parallax handles the scrolling internally when velocity is applied.
-      // Actually, since we're not moving the component, we just set the parallax offset!
-      // We can manually set the current offset, or just use the cameraX directly
-      // Flame Parallax offsets are usually set via baseVelocity, but we can set offset directly.
-      // Since baseVelocity updates position over dt, we can just map the camera pos to the baseVelocity 
-      // if we want it to move, OR we can just access the layers and update their offsets!
       // Scale down the velocity so the background moves much slower than the foreground
       _bgComponent!.parallax!.baseVelocity = Vector2(player.velocity.x * 0.1, 0);
     }

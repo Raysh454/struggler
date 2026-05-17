@@ -56,6 +56,8 @@ class AssetRegistry {
     required Vector2 textureSize,
     required double stepTime,
     bool loop = true,
+    int startRow = 0,
+    int startCol = 0,
     String? key,
   }) async {
     final cacheKey = key ?? '$atlasJsonPath-$frameName';
@@ -78,8 +80,11 @@ class AssetRegistry {
 
     final List<Sprite> sprites = [];
     for (int i = 0; i < amount; i++) {
-      final int row = i ~/ amountPerRow;
-      final int col = i % amountPerRow;
+      final int relativeRow = i ~/ amountPerRow;
+      final int relativeCol = i % amountPerRow;
+      
+      final int row = startRow + relativeRow;
+      final int col = startCol + relativeCol;
       
       sprites.add(Sprite(
         image,
@@ -118,6 +123,33 @@ class AssetRegistry {
     final sprite = Sprite(image, srcPosition: srcPosition, srcSize: srcSize);
     _spriteCache[key] = sprite;
     return sprite;
+  }
+
+  /// Loads a [SpriteAnimation] from sequentially-numbered individual PNG files.
+  ///
+  /// Example: pathPrefix = 'characters/bringer/IndividualSprite/Idle/Bringer-of-Death_Idle_'
+  ///          ext = '.png', frameCount = 8  →  loads _1.png … _8.png
+  static Future<SpriteAnimation> getAnimationFromFrameSequence(
+    FlameGame game,
+    String pathPrefix,
+    String ext,
+    int frameCount, {
+    required double stepTime,
+    bool loop = true,
+    String? key,
+  }) async {
+    final cacheKey = key ?? '${pathPrefix}seq$frameCount';
+    if (_animationCache.containsKey(cacheKey)) return _animationCache[cacheKey]!;
+
+    final sprites = <Sprite>[];
+    for (int i = 1; i <= frameCount; i++) {
+      final image = await game.images.load('$pathPrefix$i$ext');
+      sprites.add(Sprite(image));
+    }
+
+    final anim = SpriteAnimation.spriteList(sprites, stepTime: stepTime, loop: loop);
+    _animationCache[cacheKey] = anim;
+    return anim;
   }
 
   /// Clears the cache. Call this when switching themes or major game states if memory is tight.

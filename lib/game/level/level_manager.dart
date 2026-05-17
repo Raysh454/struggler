@@ -1,6 +1,7 @@
 import 'package:flame/components.dart' hide Block;
 import 'package:flame/game.dart';
 import '../config.dart';
+import '../struggler_game.dart';
 
 import 'level_data.dart';
 import 'level_validator.dart';
@@ -9,6 +10,13 @@ import '../components/block.dart';
 import '../components/lava.dart';
 import '../components/spike.dart';
 import '../components/enemy.dart';
+import '../components/enemies/skeleton_enemy.dart';
+import '../components/enemies/goblin_enemy.dart';
+import '../components/enemies/arcane_archer_enemy.dart';
+import '../components/enemies/wizard_enemy.dart';
+import '../components/enemies/nightborne_enemy.dart';
+import '../components/enemies/bringer_enemy.dart';
+import '../components/enemies/architect_boss.dart';
 import '../components/health_pickup.dart';
 import '../components/ore_pickup.dart';
 import '../components/exit_portal.dart';
@@ -32,6 +40,9 @@ class LevelManager {
 
     // Preprocess tiles into a grid for O(1) neighbor lookups
     final grid = TileGrid.fromTiles(validatedData.tiles, validatedData.width, validatedData.height);
+    if (game is StruggleGame) {
+      game.activeGrid = grid;
+    }
 
     // --- Tiles ---
     for (final tile in validatedData.tiles) {
@@ -61,15 +72,9 @@ class LevelManager {
             grid: grid,
             isJumpThrough: true,
           ));
-          components.add(PillarComponent(
-            theme: theme,
-            grid: grid,
-            position: Vector2(pos.x, pos.y + size.y),
-            size: Vector2(size.x, 2000),
-          ));
           break;
         case 'lava':
-          components.add(Lava(position: pos, size: size, theme: theme));
+          components.add(Lava(position: pos, size: size, theme: theme, grid: grid));
           break;
         case 'spike':
           components.add(Spike(position: Vector2(pos.x, pos.y + 3), size: size, theme: theme));
@@ -79,14 +84,7 @@ class LevelManager {
 
     // --- Enemies ---
     for (final enemy in validatedData.enemies) {
-      components.add(Enemy(
-        position: Vector2(enemy.x * tileSize, enemy.y * tileSize),
-        maxHealth: enemy.health,
-        contactDamage: enemy.damage,
-        speed: enemy.speed * 60,
-        enemyType: enemy.type,
-        patrolRange: enemy.patrolRange * tileSize,
-      ));
+      components.add(_buildEnemy(enemy));
     }
 
     // --- Pickups ---
@@ -153,9 +151,13 @@ class LevelManager {
           TileData(type: 'platform', x: 25, y: 10, w: 3, h: 1),
         ],
         enemies: [
-          EnemyData(x: 22, y: 14, health: 50, damage: 10, speed: 1.0, type: 'basic', patrolRange: 2),
-          EnemyData(x: 40, y: 18, health: 80, damage: 15, speed: 0.7, type: 'heavy', patrolRange: 3),
-          EnemyData(x: 52, y: 15, health: 30, damage: 8, speed: 1.8, type: 'fast', patrolRange: 2),
+          EnemyData(x: 10, y: 18, type: 'architect', patrolRange: 50),
+          EnemyData(x: 22, y: 14, type: 'goblin', patrolRange: 2),
+          EnemyData(x: 24, y: 18, type: 'nightborne', patrolRange: 3),
+          EnemyData(x: 35, y: 18, type: 'bringer', patrolRange: 3),
+          EnemyData(x: 44, y: 13, type: 'archer', patrolRange: 2),
+          EnemyData(x: 53, y: 15, type: 'wizard', patrolRange: 2),
+          EnemyData(x: 48, y: 18, type: 'skeleton', patrolRange: 1),
         ],
         pickups: [
           PickupData(type: 'health', x: 35, y: 15),
@@ -211,9 +213,9 @@ class LevelManager {
           TileData(type: 'spike', x: 15, y: 17, w: 1, h: 1),
         ],
         enemies: [
-          EnemyData(x: 16, y: 32, health: 50, damage: 10, speed: 1.0, type: 'basic', patrolRange: 2),
-          EnemyData(x: 15, y: 27, health: 50, damage: 10, speed: 1.2, type: 'basic', patrolRange: 2),
-          EnemyData(x: 14, y: 12, health: 30, damage: 5, speed: 2.0, type: 'fast', patrolRange: 2),
+          EnemyData(x: 16, y: 32, type: 'basic', patrolRange: 2),
+          EnemyData(x: 15, y: 27, type: 'basic', patrolRange: 2),
+          EnemyData(x: 14, y: 12, type: 'fast', patrolRange: 2),
         ],
         pickups: [
           PickupData(type: 'health', x: 22, y: 20),
@@ -260,9 +262,9 @@ class LevelManager {
           TileData(type: 'spike', x: 53, y: 17, w: 2, h: 1),
         ],
         enemies: [
-          EnemyData(x: 24, y: 17, health: 80, damage: 15, speed: 0.8, type: 'heavy', patrolRange: 2),
-          EnemyData(x: 44, y: 20, health: 30, damage: 10, speed: 0.0, type: 'basic', patrolRange: 0),
-          EnemyData(x: 60, y: 14, health: 50, damage: 10, speed: 1.5, type: 'fast', patrolRange: 2),
+          EnemyData(x: 24, y: 17, type: 'heavy', patrolRange: 2),
+          EnemyData(x: 44, y: 20, type: 'basic', patrolRange: 0),
+          EnemyData(x: 60, y: 14, type: 'fast', patrolRange: 2),
         ],
         pickups: [
           PickupData(type: 'health', x: 45, y: 19),
@@ -302,13 +304,13 @@ class LevelManager {
           TileData(type: 'spike', x: 21, y: 8, w: 1, h: 1),
         ],
         enemies: [
-          EnemyData(x: 14, y: 21, health: 50, damage: 10, speed: 1.2, type: 'basic', patrolRange: 3),
-          EnemyData(x: 29, y: 21, health: 80, damage: 15, speed: 0.5, type: 'heavy', patrolRange: 3),
-          EnemyData(x: 39, y: 21, health: 50, damage: 10, speed: 2.0, type: 'fast', patrolRange: 2),
+          EnemyData(x: 14, y: 21, type: 'basic', patrolRange: 3),
+          EnemyData(x: 29, y: 21, type: 'heavy', patrolRange: 3),
+          EnemyData(x: 39, y: 21, type: 'fast', patrolRange: 2),
           
           // Enemies on upper platforms
-          EnemyData(x: 13, y: 11, health: 30, damage: 5, speed: 1.0, type: 'fast', patrolRange: 1),
-          EnemyData(x: 31, y: 10, health: 30, damage: 5, speed: 1.0, type: 'fast', patrolRange: 1),
+          EnemyData(x: 13, y: 11, type: 'fast', patrolRange: 1),
+          EnemyData(x: 31, y: 10, type: 'fast', patrolRange: 1),
         ],
         pickups: [
           PickupData(type: 'health', x: 10, y: 15),
@@ -317,6 +319,61 @@ class LevelManager {
         ],
         architectDialogue: "A gauntlet of my own design. Do not disappoint me.",
       );
+    }
+  }
+
+  /// Factory mapping of JSON EnemyData to concrete dynamic subclasses.
+  /// Standardises legacy IDs ("basic", "heavy", "fast") for backward compat.
+  static BaseEnemy _buildEnemy(EnemyData data) {
+    final pos = Vector2(data.x * tileSize, data.y * tileSize);
+    final type = data.type.toLowerCase();
+
+    switch (type) {
+      case 'skeleton':
+      case 'basic': // Legacy alias
+        return SkeletonEnemy(
+          position: pos,
+        );
+
+      case 'goblin':
+      case 'fast': // Legacy alias
+        return GoblinEnemy(
+          position: pos,
+        );
+
+      case 'nightborne':
+      case 'nightborn':
+      case 'heavy': // Legacy alias
+        return NightborneEnemy(
+          position: pos,
+        );
+
+      case 'bringer':
+        return BringerEnemy(
+          position: pos,
+        );
+
+      case 'archer':
+      case 'arcane_archer':
+        return ArcaneArcherEnemy(
+          position: pos,
+        );
+
+      case 'wizard':
+        return WizardEnemy(
+          position: pos,
+        );
+
+      case 'architect':
+        return ArchitectBoss(
+          position: pos,
+        );
+
+      default:
+        // Absolute fallback: skeleton
+        return SkeletonEnemy(
+          position: pos,
+        );
     }
   }
 }

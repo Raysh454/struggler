@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'level_data.dart';
 
 /// Neighbor flags for auto-tiling. Each flag indicates whether
@@ -81,15 +82,31 @@ class TileGrid {
   }
 
   /// Check if a pillar exists at this cell.
-  /// A pillar exists if there is a solid block up to 6 tiles above it.
+  /// A pillar exists if there is a solid block or platform up to 6 tiles above it,
+  /// and the randomly generated depth for that column covers this cell.
   bool hasPillar(int x, int y) {
     if (x < 0 || y < 0 || x >= width || y >= height) return false;
-    if (_grid[y][x] == 'block') return false; // platform doesn't block pillars from above, block does
+    if (_grid[y][x] == 'block' || _grid[y][x] == 'platform') return false; 
     
-    // Check up to 6 tiles above (maxDepth of pillars is 6)
+    // Check up to 6 tiles above
     for (int i = 1; i <= 6; i++) {
       if (y - i < 0) break;
-      if (_grid[y - i][x] == 'block') return true; // only 'block' casts pillars
+      if (_grid[y - i][x] == 'block' || _grid[y - i][x] == 'platform') {
+        // Find the bottom-most solid tile of this platform column
+        int startGy = y - i + 1;
+        
+        int startX = x;
+        while (startX > 0 && isSolid(startX - 1, y - i)) {
+          startX--;
+        }
+        
+        // Generate the exact same random depth for the ENTIRE contiguous platform
+        final random = Random(startX ^ startGy);
+        final targetDepth = random.nextInt(3) + 4;
+        
+        // Check if the pillar reaches our current y coordinate
+        return y < startGy + targetDepth;
+      }
     }
     return false;
   }

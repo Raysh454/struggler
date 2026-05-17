@@ -36,7 +36,7 @@ class LevelTheme {
   // Spikes and Lava
   final Sprite floorSpikeSprite;
   final Sprite ceilingSpikeSprite;
-  final Sprite lavaWaveSprite;
+  final List<Sprite> lavaWaveSprites;
   final Sprite lavaFillSprite;
 
   /// Returns the 3 layers of background for this theme.
@@ -63,7 +63,7 @@ class LevelTheme {
     required this.rockSprites,
     required this.floorSpikeSprite,
     required this.ceilingSpikeSprite,
-    required this.lavaWaveSprite,
+    required this.lavaWaveSprites,
     required this.lavaFillSprite,
   });
 
@@ -139,7 +139,10 @@ class LevelTheme {
 
     // --- Spikes & Lava ---
     final spikeSprite = await AssetRegistry.getSpriteFromAtlas(game, atlasJson, atlasImage, 'spikes.png');
-    final lavaWave = await AssetRegistry.getSpriteFromAtlas(game, atlasJson, atlasImage, 'lava_wave.png');
+    final List<Sprite> lavaWaveSprites = [];
+    for (int i = 1; i <= 4; i++) {
+      lavaWaveSprites.add(await AssetRegistry.getSpriteFromAtlas(game, atlasJson, atlasImage, 'lava_wave_$i.png'));
+    }
     final lavaFill = await AssetRegistry.getSpriteFromAtlas(game, atlasJson, atlasImage, 'lava_fill02.png');
 
     final theme = LevelTheme(
@@ -159,7 +162,7 @@ class LevelTheme {
       rockSprites: rockSprites,
       floorSpikeSprite: spikeSprite,
       ceilingSpikeSprite: spikeSprite,
-      lavaWaveSprite: lavaWave,
+      lavaWaveSprites: lavaWaveSprites,
       lavaFillSprite: lavaFill,
     );
     _cache[type] = theme;

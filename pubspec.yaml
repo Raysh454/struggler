@@ -23,3 +23,17 @@ flutter:
     - assets/images/atlas/
     - assets/images/blocks/RockyLevel/
     - assets/images/blocks/Collectible/
+    - assets/images/characters/architect/
+    - assets/images/characters/skeleton/
+    - assets/images/characters/goblin/
+    - assets/images/characters/archer/
+    - assets/images/characters/wizard/
+    - assets/images/characters/nightborne/
+    - assets/images/characters/bringer/SpriteSheet/
+    - assets/images/characters/bringer/IndividualSprite/Idle/
+    - assets/images/characters/bringer/IndividualSprite/Walk/
+    - assets/images/characters/bringer/IndividualSprite/Attack/
+    - assets/images/characters/bringer/IndividualSprite/Cast/
+    - assets/images/characters/bringer/IndividualSprite/Hurt/
+    - assets/images/characters/bringer/IndividualSprite/Death/
+    - assets/images/characters/bringer/IndividualSprite/Spell/

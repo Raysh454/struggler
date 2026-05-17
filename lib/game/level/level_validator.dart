@@ -37,6 +37,10 @@ class LevelValidator {
 
     // Phase 1: Tile Sanitization
     tiles = _sanitizeTiles(tiles, data.width, data.height);
+    
+    // Phase 1.5: Lava Containment
+    tiles = _ensureLavaContainment(tiles, data.width, data.height);
+    
     enemies = _sanitizeEnemies(enemies, tiles, data.width, data.height);
     pickups = _sanitizePickups(pickups, tiles, data.width, data.height);
 
@@ -126,6 +130,46 @@ class LevelValidator {
       sanitized.add(tile);
     }
 
+    return sanitized;
+  }
+
+  /// Ensures all lava tiles are properly contained within a pit by adding a wall
+  /// to the left and right if they are exposed.
+  static List<TileData> _ensureLavaContainment(List<TileData> tiles, int w, int h) {
+    var sanitized = List<TileData>.from(tiles);
+    final grid = _buildGrid(sanitized, w, h);
+
+    for (final tile in tiles) {
+      if (tile.type == 'lava') {
+        final lavaY = tile.y.round();
+        final startX = tile.x.round();
+        final endX = (tile.x + tile.w).round();
+
+        // Check left edge
+        if (startX > 0 && lavaY >= 0 && lavaY < h) {
+          for (int dy = 0; dy < tile.h; dy++) {
+             final y = lavaY + dy;
+             if (y < h && grid[y][startX - 1] != 'block' && grid[y][startX - 1] != 'platform') {
+               sanitized.add(TileData(type: 'block', x: (startX - 1).toDouble(), y: y.toDouble(), w: 1.0, h: 1.0));
+               grid[y][startX - 1] = 'block';
+               print('[LevelValidator] Built left lava containment wall at (${startX - 1}, $y)');
+             }
+          }
+        }
+
+        // Check right edge
+        if (endX < w && lavaY >= 0 && lavaY < h) {
+          for (int dy = 0; dy < tile.h; dy++) {
+             final y = lavaY + dy;
+             if (y < h && grid[y][endX] != 'block' && grid[y][endX] != 'platform') {
+               sanitized.add(TileData(type: 'block', x: endX.toDouble(), y: y.toDouble(), w: 1.0, h: 1.0));
+               grid[y][endX] = 'block';
+               print('[LevelValidator] Built right lava containment wall at ($endX, $y)');
+             }
+          }
+        }
+      }
+    }
     return sanitized;
   }
 

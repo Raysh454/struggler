@@ -74,19 +74,6 @@ class PlatformBlock extends PositionComponent with CollisionCallbacks {
       return _randomFrom(theme.blockSprites, random);
     }
 
-    // Bottom row (exposed underneath)
-    if (n.isBottomEdge) {
-      if (n.isLeftEdge && theme.bottomLeftSprites.isNotEmpty) {
-        return _randomFrom(theme.bottomLeftSprites, random);
-      }
-      if (n.isRightEdge && theme.bottomRightSprites.isNotEmpty) {
-        return _randomFrom(theme.bottomRightSprites, random);
-      }
-      if (theme.bottomSprites.isNotEmpty) {
-        return _randomFrom(theme.bottomSprites, random);
-      }
-    }
-
     // Interior / wall rows
     if (n.isLeftEdge && theme.leftWallSprites.isNotEmpty) {
       return _randomFrom(theme.leftWallSprites, random);
@@ -169,6 +156,7 @@ class PlatformBlock extends PositionComponent with CollisionCallbacks {
 class PillarComponent extends PositionComponent {
   final LevelTheme theme;
   final TileGrid grid;
+  final bool isJumpThrough;
   Picture? _cachedPicture;
 
   /// Small overlap to eliminate sub-pixel seams between tiles.
@@ -179,6 +167,7 @@ class PillarComponent extends PositionComponent {
     required this.grid,
     required Vector2 position,
     required Vector2 size,
+    this.isJumpThrough = false,
   }) : super(position: position, size: size) {
     priority = -10;
   }
@@ -188,17 +177,29 @@ class PillarComponent extends PositionComponent {
     _buildCachedPicture();
   }
 
+  @override
+  void render(Canvas canvas) {
+    if (_cachedPicture != null) {
+      canvas.drawPicture(_cachedPicture!);
+    }
+  }
+
   void _buildCachedPicture() {
     if (theme.pillarSprites.isEmpty) return;
 
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
-    final random = Random(position.hashCode + 99);
     const double ts = GameConfig.tileSize;
-    final int targetDepth = random.nextInt(3) + 4; // 2 to 4 tiles deep
 
     final int columnCount = (size.x / ts).ceil();
     final int startGy = (position.y / ts).round();
+    
+    int trueStartX = (position.x / ts).round();
+    while (trueStartX > 0 && grid.isSolid(trueStartX - 1, startGy - 1)) {
+      trueStartX--;
+    }
+    final random = Random(trueStartX ^ startGy);
+    final int targetDepth = random.nextInt(3) + 4; 
 
     final darkenPaint = Paint()
       ..colorFilter = const ColorFilter.mode(
@@ -211,9 +212,13 @@ class PillarComponent extends PositionComponent {
       final gx = ((position.x + x) / ts).round();
 
       // Find depth: stop at ground or max depth
+      bool hitGround = false;
       int depth = 0;
       for (int gy = startGy; gy < grid.height && depth < targetDepth; gy++) {
-        if (grid.isSolid(gx, gy)) break;
+        if (grid.isSolid(gx, gy)) {
+          hitGround = true;
+          break;
+        }
         depth++;
       }
       if (depth <= 0) continue;
@@ -221,16 +226,14 @@ class PillarComponent extends PositionComponent {
       for (int row = 0; row < depth; row++) {
         final dy = row * ts;
         final currentGy = startGy + row;
-        final isLastRow = (row == depth - 1);
+        final isLastRow = (row == depth - 1) && !hitGround;
 
         // Edge detection per row to seamlessly merge with lower platforms
-        final isLeftEdge = col == 0 && 
-            !grid.isSolid(gx - 1, currentGy) && 
+        final isLeftEdge = !grid.isSolid(gx - 1, currentGy) && 
             !grid.isLava(gx - 1, currentGy) && 
             !grid.hasPillar(gx - 1, currentGy);
             
-        final isRightEdge = col == columnCount - 1 && 
-            !grid.isSolid(gx + 1, currentGy) && 
+        final isRightEdge = !grid.isSolid(gx + 1, currentGy) && 
             !grid.isLava(gx + 1, currentGy) && 
             !grid.hasPillar(gx + 1, currentGy);
 
@@ -272,10 +275,4 @@ class PillarComponent extends PositionComponent {
     return sprites[random.nextInt(sprites.length)];
   }
 
-  @override
-  void render(Canvas canvas) {
-    if (_cachedPicture != null) {
-      canvas.drawPicture(_cachedPicture!);
-    }
-  }
 }
