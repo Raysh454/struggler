@@ -87,12 +87,12 @@ class GameConfig {
   static const double enemyWizardStaggerForce = 30;
 
   // --- Enemy Health Configs ---
-  static const double enemyHealthSkeleton   = 80.0;
-  static const double enemyHealthGoblin     = 40.0;
-  static const double enemyHealthNightborne = 120.0;
-  static const double enemyHealthBringer    = 200.0;
-  static const double enemyHealthArcher     = 35.0;
-  static const double enemyHealthWizard     = 40.0;
+  static const double enemyHealthSkeleton   = 120.0;
+  static const double enemyHealthGoblin     = 80.0;
+  static const double enemyHealthNightborne = 160.0;
+  static const double enemyHealthBringer    = 240.0;
+  static const double enemyHealthArcher     = 75.0;
+  static const double enemyHealthWizard     = 80.0;
   static const double enemyHealthArchitect  = 999999;
 
   // --- Enemy Willpower (Will) Drop Configs ---
@@ -114,12 +114,12 @@ class GameConfig {
   static const double enemyResolveArchitect  = 100.0;
 
   // --- Enemy Damage Configs (Contact or base melee) ---
-  static const double enemyDamageSkeleton   = 12.0;
-  static const double enemyDamageGoblin     = 8.0;
-  static const double enemyDamageNightborne = 18.0;
-  static const double enemyDamageBringer    = 22.0;
-  static const double enemyDamageArcher     = 6.0;
-  static const double enemyDamageWizard     = 6.0;
+  static const double enemyDamageSkeleton   = 24.0;
+  static const double enemyDamageGoblin     = 16.0;
+  static const double enemyDamageNightborne = 36.0;
+  static const double enemyDamageBringer    = 44.0;
+  static const double enemyDamageArcher     = 12.0;
+  static const double enemyDamageWizard     = 12.0;
   static const double enemyDamageArchitect  = 0.0;
 
   // --- Enemy Speed Configs ---

@@ -402,8 +402,8 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     } else {
       if (_jumpBufferTimer > 0) {
         final staminaCost = GameConfig.playerStaminaJumpCost;
-        if (game.playerState.stamina >= staminaCost) {
-          if (_coyoteTimer > 0) {
+        if (_coyoteTimer > 0) {
+          if (game.playerState.stamina >= staminaCost) {
             // Normal jump or coyote jump
             game.playerState.stamina -= staminaCost;
             velocity.y = jumpForce;
@@ -411,13 +411,12 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
             _coyoteTimer = 0;
             _jumpBufferTimer = 0;
             _jumpsRemaining = _maxJumps - 1;
-          } else if (_jumpsRemaining > 0) {
-            // Air jump (double jump)
-            //game.playerState.stamina -= staminaCost;
-            velocity.y = jumpForce;
-            _jumpsRemaining = 0;
-            _jumpBufferTimer = 0;
           }
+        } else if (_jumpsRemaining > 0) {
+          // Air jump (double jump)
+          velocity.y = jumpForce;
+          _jumpsRemaining = 0;
+          _jumpBufferTimer = 0;
         }
       }
     }

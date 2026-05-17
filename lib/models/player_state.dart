@@ -109,7 +109,7 @@ class PlayerState {
       willpower -= cost;
       diamondsCollected -= 1;
       swordUpgradeLevel++;
-      swordDamage += 5.0;
+      swordDamage += 10.0;
       return true;
     }
     return false;
