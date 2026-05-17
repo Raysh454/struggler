@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../../config.dart';
-import '../../struggler_game.dart';
 import '../enemy.dart';
 import '../player.dart';
 import '../projectile.dart';
@@ -116,9 +115,9 @@ abstract class RangedEnemy extends BaseEnemy {
       // Do not jump if we are at a ledge/pit (jumping forward would plunge us into the void)
       final atLedge = wouldFall(facingDirection * 12.0);
       
-      if (((playerOnHigherPlatform && closeHorizontally) || blocked) && !atLedge) {
+      if (playerOnHigherPlatform && (closeHorizontally || blocked) && !atLedge) {
         jump();
-        _jumpCooldown = 1.5; // Cooldown of 1.5s
+        _jumpCooldown = 3.0; // Cooldown of 3.0s
       }
     }
 
@@ -167,6 +166,12 @@ class ArcaneArcherEnemy extends RangedEnemy {
           speed: GameConfig.enemySpeedArcher,
           fireCooldown: GameConfig.enemyRangedFireCooldown,
         );
+
+  @override
+  int get willpowerReward => GameConfig.enemyWillArcher;
+
+  @override
+  double get resolveReward => GameConfig.enemyResolveArcher;
 
   // Archer sheet: 512×512, 64×64 frames
   static final Vector2 _frame = Vector2(64, 64);
@@ -272,6 +277,22 @@ class ArcaneArcherEnemy extends RangedEnemy {
         _animGroup!.animationTickers?[_current]?.reset();
       }
     }
+  }
+
+  @override
+  bool takeDamage(double damage) {
+    if (isDead) return false;
+    final fatal = super.takeDamage(damage);
+    if (!fatal) {
+      hurtTimer = GameConfig.enemyArcherHurtDuration;
+
+      final player = playerTarget;
+      if (player != null) {
+        final pushDir = (position.x + size.x / 2) > (player.position.x + player.size.x / 2) ? 1.0 : -1.0;
+        stagger(pushDir * GameConfig.enemyArcherStaggerForce);
+      }
+    }
+    return fatal;
   }
 
   @override

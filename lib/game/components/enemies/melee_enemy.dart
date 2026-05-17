@@ -168,9 +168,9 @@ abstract class MeleeEnemy extends BaseEnemy {
       // Do not jump if we are at a ledge/pit (jumping forward would plunge us into the void)
       final atLedge = wouldFall(facingDirection * 12.0);
       
-      if (((playerOnHigherPlatform && closeHorizontally) || blocked) && !atLedge) {
+      if (playerOnHigherPlatform && (closeHorizontally || blocked) && !atLedge) {
         jump();
-        _jumpCooldownTimer = 1.5; // Cooldown of 1.5s
+        _jumpCooldownTimer = 3.0; // Cooldown of 3.0s
       }
     }
   }
@@ -215,7 +215,7 @@ abstract class MeleeEnemy extends BaseEnemy {
       } else {
         // Reward perfect dodge if invincible during the actual hit frame!
         game.playerState.perfectDodges++;
-        game.playerState.addResolve(25);
+        //game.playerState.addResolve(25);
       }
     }
     _swingTarget = null;

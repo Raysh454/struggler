@@ -53,6 +53,12 @@ class ArchitectBoss extends BaseEnemy {
           contactDamage: GameConfig.enemyDamageArchitect,
         );
 
+  @override
+  int get willpowerReward => GameConfig.enemyWillArchitect;
+
+  @override
+  double get resolveReward => GameConfig.enemyResolveArchitect;
+
   // architect/idle.png = 3360×240, 15 frames at 224×240
   static const int    _frameCount  = 15;
   static const double _frameWidth  = 224.0;

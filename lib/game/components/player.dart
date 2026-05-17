@@ -50,6 +50,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   // --- Input state (set by the game/controls) ---
   bool moveLeft = false;
   bool moveRight = false;
+  bool downPressed = false;
   bool jumpPressed = false;
   double _attackBufferTimer = 0;
   bool get attackPressed => _attackBufferTimer > 0;
@@ -57,10 +58,12 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     _attackBufferTimer = val ? GameConfig.playerAttackInputBuffer : 0;
   }
   bool dodgePressed = false;
+  double _ignorePlatformsTimer = 0.0;
 
   // --- Combat ---
   bool _isAttacking = false;
   bool _isAirAttacking = false;
+  final Set<BaseEnemy> _plungeHitEnemies = {};
   int _comboStep = 0; // 0, 1, or 2
   double _comboWindowTimer = 0;
   bool _comboQueued = false;
@@ -191,9 +194,18 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     }
     super.update(dt);
     
+    // Regenerate stamina (only when on ground and not performing any attacks)
+    if (!_isDead && _hitStopTimer <= 0 && isOnGround && !_isAttacking && !_isAirAttacking) {
+      game.playerState.stamina = (game.playerState.stamina + GameConfig.playerStaminaRegenRate * dt)
+          .clamp(0.0, game.playerState.maxStamina);
+    }
+    
     // Tick attack input buffer
     if (_attackBufferTimer > 0) {
       _attackBufferTimer -= dt;
+    }
+    if (_ignorePlatformsTimer > 0) {
+      _ignorePlatformsTimer -= dt;
     }
     // Attack damage delay
     if (_attackDamageDelayTimer > 0) {
@@ -205,7 +217,30 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     if (_attackFreezeTimer > 0) {
       _attackFreezeTimer -= dt;
     }
- 
+
+    // Active descent plunge/jump attack collision damage and stagger
+    if (_isAirAttacking && _airHangTimer <= 0) {
+      final enemies = parent?.children.whereType<BaseEnemy>() ?? [];
+      final playerRect = toRect();
+      for (final enemy in enemies) {
+        if (!_plungeHitEnemies.contains(enemy) && playerRect.overlaps(enemy.toRect())) {
+          _plungeHitEnemies.add(enemy);
+          final damage = game.playerState.effectiveDamage;
+          final killed = enemy.takeDamage(damage);
+          if (game.playerState.isIndomitable) {
+            game.playerState.heal(damage * GameConfig.playerIndomitableLifestealRatio);
+          }
+          _hitStopTimer = hitStopDuration; // Impact pause
+          game.onScreenShake(4.0); // Shake screen
+          if (killed) {
+            game.playerState.enemiesKilled++;
+            game.playerState.addResolve(enemy.resolveReward);
+            game.playerState.willpower += enemy.willpowerReward;
+          }
+        }
+      }
+    }
+
     _updateTimers(dt);
     _handleAttack(dt);
     _handleDodge(dt);
@@ -232,8 +267,6 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     // Determine current animation state
     if (_isDead) {
       anim.current = PlayerAnimationState.death;
-    } else if (_hurtTimer > 0) {
-      anim.current = PlayerAnimationState.hurt;
     } else if (_isDodging) {
       anim.current = PlayerAnimationState.dodge;
     } else if (_isAirAttacking) {
@@ -246,6 +279,8 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       } else {
         anim.current = PlayerAnimationState.attack3;
       }
+    } else if (_hurtTimer > 0) {
+      anim.current = PlayerAnimationState.hurt;
     } else if (!isOnGround) {
       anim.current = PlayerAnimationState.jump;
     } else if (velocity.x != 0) {
@@ -260,6 +295,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     if (_isDead) return false;
     moveLeft = keysPressed.contains(LogicalKeyboardKey.keyA);
     moveRight = keysPressed.contains(LogicalKeyboardKey.keyD);
+    downPressed = keysPressed.contains(LogicalKeyboardKey.keyS);
     
     if (event is KeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.keyW) {
@@ -267,6 +303,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       }
       if (event.logicalKey == LogicalKeyboardKey.space) {
         dodgePressed = true;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.keyR) {
+        activateIndomitable();
       }
     }
     
@@ -312,6 +351,13 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       }
     }
 
+    // Drop-down logic
+    if (downPressed && isOnGround && _ignorePlatformsTimer <= 0) {
+      _ignorePlatformsTimer = 0.25;
+      isOnGround = false;
+      velocity.y = 50.0; // Give a slight downward push to break ground-contact immediately
+    }
+
     // Jump logic
     if (_isAirAttacking) {
       if (_airHangTimer > 0) {
@@ -322,18 +368,23 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       }
     } else {
       if (_jumpBufferTimer > 0) {
-        if (_coyoteTimer > 0) {
-          // Normal jump or coyote jump
-          velocity.y = jumpForce;
-          isOnGround = false;
-          _coyoteTimer = 0;
-          _jumpBufferTimer = 0;
-          _jumpsRemaining = _maxJumps - 1;
-        } else if (_jumpsRemaining > 0) {
-          // Air jump (double jump)
-          velocity.y = jumpForce;
-          _jumpsRemaining--;
-          _jumpBufferTimer = 0;
+        final staminaCost = GameConfig.playerStaminaJumpCost;
+        if (game.playerState.stamina >= staminaCost) {
+          if (_coyoteTimer > 0) {
+            // Normal jump or coyote jump
+            game.playerState.stamina -= staminaCost;
+            velocity.y = jumpForce;
+            isOnGround = false;
+            _coyoteTimer = 0;
+            _jumpBufferTimer = 0;
+            _jumpsRemaining = _maxJumps - 1;
+          } else if (_jumpsRemaining > 0) {
+            // Air jump (double jump)
+            //game.playerState.stamina -= staminaCost;
+            velocity.y = jumpForce;
+            _jumpsRemaining--;
+            _jumpBufferTimer = 0;
+          }
         }
       }
     }
@@ -366,12 +417,22 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         _animationComponent?.animationTickers?[PlayerAnimationState.attack3]?.reset();
         
         if (_comboQueued && _comboStep < 2) {
-          _comboStep++;
-          _comboQueued = false;
-          _isAttacking = true;
-          _attackTimer = attackDuration;
-          _attackDamageDelayTimer = attackDuration * GameConfig.playerAttackDamageDelayRatio;
-          _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
+          final cost = GameConfig.playerStaminaAttackCost;
+          if (game.playerState.stamina >= cost) {
+            game.playerState.stamina -= cost;
+            _comboStep++;
+            _comboQueued = false;
+            _isAttacking = true;
+            _attackTimer = attackDuration;
+            _attackDamageDelayTimer = attackDuration * GameConfig.playerAttackDamageDelayRatio;
+            _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
+          } else {
+            // Cancel queued combo because of insufficient stamina
+            _comboQueued = false;
+            _comboStep = 0;
+            _comboWindowTimer = 0;
+            _attackCooldownTimer = attackCooldown;
+          }
         } else {
           _comboQueued = false;
           if (_comboStep == 2) {
@@ -389,28 +450,41 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
  
     if (attackPressed && !_isDodging) {
       if (!isOnGround && !_isAirAttacking) {
-        _isAirAttacking = true;
-        attackPressed = false;
-        velocity.x = 0;
-        velocity.y = 0;
-        _airHangTimer = GameConfig.playerPlungeDelay; // Use plunge delay config
+        final cost = GameConfig.playerStaminaPlungeCost;
+        if (game.playerState.stamina >= cost) {
+          game.playerState.stamina -= cost;
+          _isAirAttacking = true;
+          _plungeHitEnemies.clear();
+          attackPressed = false;
+          velocity.x = 0;
+          velocity.y = 0;
+          _airHangTimer = GameConfig.playerPlungeDelay; // Use plunge delay config
+        }
       } else if (isOnGround && !_isAttacking && _attackCooldownTimer <= 0 && _comboWindowTimer <= 0) {
-        _comboStep = 0;
-        _isAttacking = true;
-        _attackTimer = attackDuration;
-        _attackDamageDelayTimer = attackDuration * GameConfig.playerAttackDamageDelayRatio;
-        _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
-        _comboQueued = false;
-        attackPressed = false;
+        final cost = GameConfig.playerStaminaAttackCost;
+        if (game.playerState.stamina >= cost) {
+          game.playerState.stamina -= cost;
+          _comboStep = 0;
+          _isAttacking = true;
+          _attackTimer = attackDuration;
+          _attackDamageDelayTimer = attackDuration * GameConfig.playerAttackDamageDelayRatio;
+          _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
+          _comboQueued = false;
+          attackPressed = false;
+        }
       } else if (isOnGround && !_isAttacking && _comboWindowTimer > 0) {
-        _comboStep++;
-        _comboWindowTimer = 0;
-        _isAttacking = true;
-        _attackTimer = attackDuration;
-        _attackDamageDelayTimer = attackDuration * GameConfig.playerAttackDamageDelayRatio;
-        _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
-        _comboQueued = false;
-        attackPressed = false;
+        final cost = GameConfig.playerStaminaAttackCost;
+        if (game.playerState.stamina >= cost) {
+          game.playerState.stamina -= cost;
+          _comboStep++;
+          _comboWindowTimer = 0;
+          _isAttacking = true;
+          _attackTimer = attackDuration;
+          _attackDamageDelayTimer = attackDuration * GameConfig.playerAttackDamageDelayRatio;
+          _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
+          _comboQueued = false;
+          attackPressed = false;
+        }
       }
     }
   }
@@ -432,12 +506,17 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       if (attackArea.overlaps(enemyRect)) {
         final damage = game.playerState.effectiveDamage;
         final killed = enemy.takeDamage(damage);
+        if (game.playerState.isIndomitable) {
+          game.playerState.heal(damage * GameConfig.playerIndomitableLifestealRatio);
+        }
         _hitStopTimer = hitStopDuration; // Hit-stop for impact feel
         game.onScreenShake(3.0); // Screen shake
         if (killed) {
           game.playerState.enemiesKilled++;
           // Gain resolve on kill
-          game.playerState.addResolve(15);
+          game.playerState.addResolve(enemy.resolveReward);
+          // Reward willpower based on enemy strength
+          game.playerState.willpower += enemy.willpowerReward;
         }
       }
     }
@@ -454,8 +533,12 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       return;
     }
     if (dodgePressed && !_isDodging && _dodgeCooldownTimer <= 0 && !_isAttacking) {
-      _isDodging = true;
-      _dodgeTimer = dodgeDuration;
+      final cost = GameConfig.playerStaminaDodgeCost;
+      if (game.playerState.stamina >= cost) {
+        game.playerState.stamina -= cost;
+        _isDodging = true;
+        _dodgeTimer = dodgeDuration;
+      }
       dodgePressed = false;
     }
   }
@@ -497,7 +580,12 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       other.removeFromParent();
       game.playerState.oreCollected++;
     } else if (other is ExitPortal) {
-      game.onLevelComplete();
+      final enemiesRemaining = game.world.children.whereType<BaseEnemy>().where((e) => !e.isDead).length;
+      if (enemiesRemaining == 0) {
+        game.onLevelComplete();
+      } else {
+        game.onScreenShake(2.0); // Mild camera shake to signal portal is locked
+      }
     }
   }
 
@@ -508,7 +596,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       _resolveBlockCollision(other);
     }
     if (other is Lava) {
-        receiveDamage(other.damage);
+      receiveDamage(other.damage);
+    } else if (other is Spike) {
+      receiveDamage(other.damage);
     }
   }
 
@@ -526,6 +616,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         .reduce((a, b) => a < b ? a : b);
         
     if (block.isJumpThrough) {
+      if (_ignorePlatformsTimer > 0) return;
       if (minOverlap == overlapTop && velocity.y >= 0) {
         // Only land if we are falling onto the top surface, not jumping through from below
         if (overlapTop <= size.y * 0.5) {
@@ -603,10 +694,17 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     final enemies = parent?.children.whereType<BaseEnemy>() ?? [];
     for (final enemy in enemies) {
       if (splashArea.overlaps(enemy.toRect())) {
-        final killed = enemy.takeDamage(GameConfig.playerPlungeSplashDamage);
+        final damage = game.playerState.isIndomitable
+            ? GameConfig.playerPlungeSplashDamage * GameConfig.playerIndomitableDamageMultiplier
+            : GameConfig.playerPlungeSplashDamage;
+        final killed = enemy.takeDamage(damage);
+        if (game.playerState.isIndomitable) {
+          game.playerState.heal(damage * GameConfig.playerIndomitableLifestealRatio);
+        }
         if (killed) {
           game.playerState.enemiesKilled++;
-          game.playerState.addResolve(15);
+          game.playerState.addResolve(enemy.resolveReward);
+          game.playerState.willpower += enemy.willpowerReward;
         }
       }
     }
@@ -618,8 +716,10 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
   /// Activate the Indomitable state (called when resolve is full).
   void activateIndomitable() {
-    game.playerState.isIndomitable = true;
-    game.playerState.resolve = game.playerState.maxResolve;
+    if (game.playerState.resolve >= game.playerState.maxResolve && !game.playerState.isIndomitable) {
+      game.playerState.isIndomitable = true;
+      game.playerState.resolve = game.playerState.maxResolve;
+    }
   }
 
   /// Deactivate the Indomitable state.

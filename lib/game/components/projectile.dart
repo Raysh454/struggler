@@ -62,7 +62,7 @@ abstract class Projectile extends PositionComponent
         if (!_dodgedPlayers.contains(other)) {
           _dodgedPlayers.add(other);
           game.playerState.perfectDodges++;
-          game.playerState.addResolve(15);
+          //game.playerState.addResolve(15);
         }
         // Do NOT destroy the projectile or stop it! Let it cleanly fly straight through!
       }
@@ -269,7 +269,7 @@ class ThunderHandProjectile extends Projectile {
             player.receiveDamage(damage);
           } else {
             player.game.playerState.perfectDodges++;
-            player.game.playerState.addResolve(15);
+            //player.game.playerState.addResolve(15);
           }
           _hasAppliedDamage = true;
         }

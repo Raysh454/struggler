@@ -83,6 +83,12 @@ class _TouchControls extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     _ControlButton(
+                      icon: Icons.arrow_downward,
+                      onDown: () => game.player.downPressed = true,
+                      onUp: () => game.player.downPressed = false,
+                    ),
+                    const SizedBox(width: 8),
+                    _ControlButton(
                       icon: Icons.arrow_forward,
                       onDown: () => game.player.moveRight = true,
                       onUp: () => game.player.moveRight = false,
@@ -103,6 +109,13 @@ class _TouchControls extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    _ControlButton(
+                      icon: Icons.whatshot,
+                      label: 'RESOLVE',
+                      onDown: () => game.player.activateIndomitable(),
+                      color: const Color(0xFFFF9900),
+                    ),
+                    const SizedBox(width: 8),
                     _ControlButton(
                       icon: Icons.shield,
                       label: 'DODGE',

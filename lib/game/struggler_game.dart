@@ -6,6 +6,7 @@ import 'package:flame/game.dart';
 
 import '../models/player_state.dart';
 import '../models/game_state.dart';
+import 'config.dart';
 import 'components/player.dart';
 import 'level/level_manager.dart';
 import 'level/level_theme.dart';
@@ -131,7 +132,7 @@ class StruggleGame extends FlameGame
 
     // Drain resolve during Indomitable state
     if (playerState.isIndomitable) {
-      playerState.resolve -= 30 * dt; // Drains over ~3.3 seconds
+      playerState.resolve -= GameConfig.playerResolveDrainRate * dt;
       if (playerState.resolve <= 0) {
         player.deactivateIndomitable();
       }

@@ -32,6 +32,12 @@ class GoblinEnemy extends MeleeEnemy {
           attackAnimDuration: 0.56,
         );
 
+  @override
+  int get willpowerReward => GameConfig.enemyWillGoblin;
+
+  @override
+  double get resolveReward => GameConfig.enemyResolveGoblin;
+
   static final Vector2 _frame = Vector2(150, 150);
   static final Vector2 _renderSize = GameConfig.enemySizeGoblin;
 
@@ -84,9 +90,19 @@ class GoblinEnemy extends MeleeEnemy {
     if (isDead) return false;
     final fatal = super.takeDamage(damage);
     if (!fatal && _spriteLoaded && _animGroup != null) {
-      _current = _GAnim.hurt;
-      _animGroup!.current = _GAnim.hurt;
-      _animGroup!.animationTickers?[_GAnim.hurt]?.reset();
+      if (!isAttackingState) {
+        _current = _GAnim.hurt;
+        _animGroup!.current = _GAnim.hurt;
+        _animGroup!.animationTickers?[_GAnim.hurt]?.reset();
+      }
+
+      hurtTimer = GameConfig.enemyGoblinHurtDuration;
+
+      final player = playerTarget;
+      if (player != null) {
+        final pushDir = (position.x + size.x / 2) > (player.position.x + player.size.x / 2) ? 1.0 : -1.0;
+        stagger(pushDir * GameConfig.enemyGoblinStaggerForce);
+      }
     }
     return fatal;
   }

@@ -30,6 +30,12 @@ class WizardEnemy extends RangedEnemy {
           fireCooldown: GameConfig.enemyWizardFireCooldown,
         );
 
+  @override
+  int get willpowerReward => GameConfig.enemyWillWizard;
+
+  @override
+  double get resolveReward => GameConfig.enemyResolveWizard;
+
   static final Vector2 _renderSize = GameConfig.enemySizeWizard;
 
   @override
@@ -151,6 +157,22 @@ class WizardEnemy extends RangedEnemy {
 
   Player? _player() =>
       parent?.children.whereType<Player>().firstOrNull;
+
+  @override
+  bool takeDamage(double damage) {
+    if (isDead) return false;
+    final fatal = super.takeDamage(damage);
+    if (!fatal) {
+      hurtTimer = GameConfig.enemyWizardHurtDuration;
+
+      final player = playerTarget;
+      if (player != null) {
+        final pushDir = (position.x + size.x / 2) > (player.position.x + player.size.x / 2) ? 1.0 : -1.0;
+        stagger(pushDir * GameConfig.enemyWizardStaggerForce);
+      }
+    }
+    return fatal;
+  }
 
   @override
   void onDeath() {

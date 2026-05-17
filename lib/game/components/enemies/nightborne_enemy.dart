@@ -39,6 +39,12 @@ class NightborneEnemy extends MeleeEnemy {
           attackAnimDuration: 0.84,
         );
 
+  @override
+  int get willpowerReward => GameConfig.enemyWillNightborne;
+
+  @override
+  double get resolveReward => GameConfig.enemyResolveNightborne;
+
   static final Vector2 _frame      = Vector2(80, 80);
   static final Vector2 _renderSize = GameConfig.enemySizeNightborne;
 
@@ -145,9 +151,19 @@ class NightborneEnemy extends MeleeEnemy {
     if (isDead) return false;
     final fatal = super.takeDamage(damage);
     if (!fatal && _spriteLoaded && _animGroup != null) {
-      _current = _NAnim.hurt;
-      _animGroup!.current = _NAnim.hurt;
-      _animGroup!.animationTickers?[_NAnim.hurt]?.reset();
+      if (!isAttackingState) {
+        _current = _NAnim.hurt;
+        _animGroup!.current = _NAnim.hurt;
+        _animGroup!.animationTickers?[_NAnim.hurt]?.reset();
+      }
+
+      hurtTimer = GameConfig.enemyNightborneHurtDuration;
+
+      final player = playerTarget;
+      if (player != null) {
+        final pushDir = (position.x + size.x / 2) > (player.position.x + player.size.x / 2) ? 1.0 : -1.0;
+        stagger(pushDir * GameConfig.enemyNightborneStaggerForce);
+      }
     }
     return fatal;
   }

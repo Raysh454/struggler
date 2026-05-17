@@ -11,8 +11,9 @@ class GameConfig {
   static const double lavaBleed = 1.0;
 
   // --- Player Starting Defaults ---
-  static const double playerMaxHealthDefault = 100;
+  static const double playerMaxHealthDefault = 100.0;
   static const double playerMaxResolveDefault = 100.0;
+  static const double playerMaxStaminaDefault = 100.0;
   static const double playerSwordDamageDefault = 25.0;
 
   // --- Player Physics & Stats ---
@@ -23,11 +24,23 @@ class GameConfig {
   static const int playerMaxJumps = 2;
   static const double playerJumpBufferDuration = 0.15;
   static const double playerCoyoteDuration = 0.1;
+
+  // --- Player Stamina Costs & Regeneration ---
+  static const double playerStaminaRegenRate = 30.0; // Units regenerated per second
+  static const double playerStaminaJumpCost = 12.0;
+  static const double playerStaminaAttackCost = 10.0;
+  static const double playerStaminaPlungeCost = 30.0;
+  static const double playerStaminaDodgeCost = 15.0;
   
   static final Vector2 playerSize = Vector2(28, 40);
   static final Vector2 playerAnimationSize = Vector2(128, 64);
 
   // --- Player Combat ---
+  static const double playerResolveDrainRate = 30.0;
+  static const double playerIndomitableDamageMultiplier = 2.0;
+  static const double playerIndomitableDefenseMultiplier = 0.5;
+  static const double playerIndomitableLifestealRatio = 0.5;
+  
   // --- Player Combat & Combo system ---
   static const double playerAttackDuration = 0.28;
   static const double playerAttackCooldown = 0.35;
@@ -51,7 +64,25 @@ class GameConfig {
 
   // --- Enemy Configs ---
   static const double enemyGravity = 900.0;
-  static const double enemyHurtDuration = 0.15;
+  static const double enemyHurtDuration = 0.4;
+
+  static const double enemySkeletonHurtDuration = 0.4;
+  static const double enemySkeletonStaggerForce = 30;
+
+  static const double enemyGoblinHurtDuration = 0.4;
+  static const double enemyGoblinStaggerForce = 30;
+
+  static const double enemyNightborneHurtDuration = 0.4;
+  static const double enemyNightborneStaggerForce = 30;
+
+  static const double enemyBringerHurtDuration = 0.4;
+  static const double enemyBringerStaggerForce = 30.0;
+
+  static const double enemyArcherHurtDuration = 0.15;
+  static const double enemyArcherStaggerForce = 30;
+
+  static const double enemyWizardHurtDuration = 0.15;
+  static const double enemyWizardStaggerForce = 30;
 
   // --- Enemy Health Configs ---
   static const double enemyHealthSkeleton   = 80.0;
@@ -60,7 +91,25 @@ class GameConfig {
   static const double enemyHealthBringer    = 200.0;
   static const double enemyHealthArcher     = 35.0;
   static const double enemyHealthWizard     = 40.0;
-  static const double enemyHealthArchitect  = 999999.0;
+  static const double enemyHealthArchitect  = 999999;
+
+  // --- Enemy Willpower (Will) Drop Configs ---
+  static const int enemyWillSkeleton   = 15;
+  static const int enemyWillGoblin     = 5;
+  static const int enemyWillNightborne = 25;
+  static const int enemyWillBringer    = 50;
+  static const int enemyWillArcher     = 8;
+  static const int enemyWillWizard     = 10;
+  static const int enemyWillArchitect  = 100;
+
+  // --- Enemy Resolve Drop Configs ---
+  static const double enemyResolveSkeleton   = 15.0;
+  static const double enemyResolveGoblin     = 10.0;
+  static const double enemyResolveNightborne = 30.0;
+  static const double enemyResolveBringer    = 40.0;
+  static const double enemyResolveArcher     = 15.0;
+  static const double enemyResolveWizard     = 15.0;
+  static const double enemyResolveArchitect  = 100.0;
 
   // --- Enemy Damage Configs (Contact or base melee) ---
   static const double enemyDamageSkeleton   = 12.0;

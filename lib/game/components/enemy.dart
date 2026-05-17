@@ -6,6 +6,7 @@ import '../components/block.dart';
 import 'package:struggler/game/components/lava.dart';
 import '../config.dart';
 import '../struggler_game.dart';
+import 'player.dart';
 
 // ---------------------------------------------------------------------------
 // BaseEnemy — abstract root for every enemy type.
@@ -27,6 +28,12 @@ abstract class BaseEnemy extends PositionComponent
   final double contactDamage;
   bool isDead = false;
 
+  /// The willpower (will) rewarded to the player when this enemy dies.
+  int get willpowerReward;
+
+  /// The resolve rewarded to the player when this enemy dies.
+  double get resolveReward;
+
   // --- Physics ---
   double velocityY = 0;
   static const double _gravity = GameConfig.enemyGravity;
@@ -35,6 +42,8 @@ abstract class BaseEnemy extends PositionComponent
   // --- State ---
   double hurtTimer = 0;
   int facingDirection = 1; // 1 = right, -1 = left
+  double _ignorePlatformsTimer = 0.0;
+  double _staggerVelocityX = 0.0;
   bool get isAttackingState => false;
 
   // --- Animation slot (set by subclass in onLoad) ---
@@ -62,6 +71,14 @@ abstract class BaseEnemy extends PositionComponent
       return;
     }
     if (hurtTimer > 0) hurtTimer -= dt;
+    if (_staggerVelocityX.abs() > 0.01) {
+      final step = _staggerVelocityX * dt;
+      position.x += step;
+      _staggerVelocityX *= 0.82; // Decelerate quickly
+    } else {
+      _staggerVelocityX = 0.0;
+    }
+    if (_ignorePlatformsTimer > 0) _ignorePlatformsTimer -= dt;
     _applyGravity(dt);
     _flipSprite();
 
@@ -79,6 +96,10 @@ abstract class BaseEnemy extends PositionComponent
       velocityY = GameConfig.playerJumpForce;
       isOnGround = false;
     }
+  }
+
+  void stagger(double pushVelocityX) {
+    _staggerVelocityX = pushVelocityX;
   }
 
   // ------------------------------------------------------------------ physics
@@ -199,6 +220,13 @@ abstract class BaseEnemy extends PositionComponent
         .reduce((a, b) => a < b ? a : b);
 
     if (block.isJumpThrough) {
+      if (_ignorePlatformsTimer > 0) return;
+      final player = playerTarget;
+      if (player != null && player.position.y > position.y + size.y - 8.0) {
+        _ignorePlatformsTimer = 0.25;
+        isOnGround = false;
+        return;
+      }
       if (minOverlap == overlapTop &&
           velocityY >= 0 &&
           overlapTop <= size.y * 0.5) {
@@ -228,6 +256,8 @@ abstract class BaseEnemy extends PositionComponent
       }
     }
   }
+
+  Player? get playerTarget => parent?.children.whereType<Player>().firstOrNull;
 
   // ------------------------------------------------------------------- hooks
 

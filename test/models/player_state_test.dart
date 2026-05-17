@@ -15,6 +15,8 @@ void main() {
         expect(state.health, 100.0);
         expect(state.maxResolve, 100.0);
         expect(state.resolve, 0.0);
+        expect(state.maxStamina, 100.0);
+        expect(state.stamina, 100.0);
         expect(state.swordDamage, 25.0);
         expect(state.isIndomitable, false);
         expect(state.perfectDodges, 0);
@@ -29,6 +31,7 @@ void main() {
         final custom = PlayerState(
           maxHealth: 200,
           maxResolve: 50,
+          maxStamina: 150,
           swordDamage: 40,
           oreCollected: 3,
           willpower: 10,
@@ -37,6 +40,8 @@ void main() {
         expect(custom.maxHealth, 200.0);
         expect(custom.health, 200.0); // health starts at maxHealth
         expect(custom.maxResolve, 50.0);
+        expect(custom.maxStamina, 150.0);
+        expect(custom.stamina, 150.0);
         expect(custom.swordDamage, 40.0);
         expect(custom.oreCollected, 3);
         expect(custom.willpower, 10);
@@ -152,6 +157,12 @@ void main() {
         state.resetForRetry();
         expect(state.resolve, 0.0);
         expect(state.isIndomitable, false);
+      });
+
+      test('restores stamina to maxStamina', () {
+        state.stamina = 10;
+        state.resetForRetry();
+        expect(state.stamina, 100.0);
       });
 
       test('does NOT reset death count or enemies killed', () {

@@ -1,11 +1,13 @@
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import '../config.dart';
+import '../struggler_game.dart';
+import 'enemy.dart';
 import 'dart:ui';
 import 'dart:math';
 
 /// Level exit portal. Touching this completes the level.
-class ExitPortal extends PositionComponent with CollisionCallbacks {
+class ExitPortal extends PositionComponent with CollisionCallbacks, HasGameReference<StruggleGame> {
   double _animTimer = 0;
 
   ExitPortal({
@@ -32,6 +34,9 @@ class ExitPortal extends PositionComponent with CollisionCallbacks {
     final cy = size.y / 2;
     final pulse = sin(_animTimer) * 0.3 + 0.7;
 
+    final enemiesRemaining = game.world.children.whereType<BaseEnemy>().where((e) => !e.isDead).length;
+    final isLocked = enemiesRemaining > 0;
+
     // Portal glow ring
     canvas.drawOval(
       Rect.fromCenter(
@@ -40,12 +45,9 @@ class ExitPortal extends PositionComponent with CollisionCallbacks {
         height: size.y * pulse,
       ),
       Paint()
-        ..color = Color.fromARGB(
-          (200 * pulse).round(),
-          100,
-          200,
-          255,
-        )
+        ..color = isLocked
+            ? Color.fromARGB((200 * pulse).round(), 255, 34, 68)
+            : Color.fromARGB((200 * pulse).round(), 100, 200, 255)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3,
     );
@@ -58,7 +60,9 @@ class ExitPortal extends PositionComponent with CollisionCallbacks {
         height: size.y * 0.6,
       ),
       Paint()
-        ..color = const Color(0x4464C8FF)
+        ..color = isLocked
+            ? const Color(0x44FF2244)
+            : const Color(0x4464C8FF)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
     );
 

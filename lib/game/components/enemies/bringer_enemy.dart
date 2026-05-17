@@ -37,6 +37,12 @@ class BringerEnemy extends MeleeEnemy {
         );
 
   @override
+  int get willpowerReward => GameConfig.enemyWillBringer;
+
+  @override
+  double get resolveReward => GameConfig.enemyResolveBringer;
+
+  @override
   bool get defaultSpriteFacesLeft => true;
 
   @override
@@ -94,10 +100,21 @@ class BringerEnemy extends MeleeEnemy {
     if (isDead) return false;
     final fatal = super.takeDamage(damage);
     if (!fatal && _spriteLoaded && _animGroup != null) {
-      _casting = false; // Interrupted cast!
-      _current = _BAnim.hurt;
-      _animGroup!.current = _BAnim.hurt;
-      _animGroup!.animationTickers?[_BAnim.hurt]?.reset();
+      if (!isAttackingState) {
+        _casting = false; // Interrupted cast!
+        _current = _BAnim.hurt;
+        _animGroup!.current = _BAnim.hurt;
+        _animGroup!.animationTickers?[_BAnim.hurt]?.reset();
+      }
+      
+      // Set Bringer stagger duration to configured duration!
+      hurtTimer = GameConfig.enemyBringerHurtDuration;
+
+      final player = playerTarget;
+      if (player != null) {
+        final pushDir = (position.x + size.x / 2) > (player.position.x + player.size.x / 2) ? 1.0 : -1.0;
+        stagger(pushDir * GameConfig.enemyBringerStaggerForce); // Heavy physical pushback
+      }
     }
     return fatal;
   }
@@ -109,11 +126,10 @@ class BringerEnemy extends MeleeEnemy {
 
     if (!_spriteLoaded) return;
 
-    // Hurt ticker lock: play stagger animation to completion!
-    final hurtTicker = _animGroup!.animationTickers?[_BAnim.hurt];
-    if (_current == _BAnim.hurt && hurtTicker != null) {
-      if (!hurtTicker.done()) {
-        return; // Stun lockout: lock AI while stagger animation plays
+    // Hurt lock: keep Bringer in hurt/stagger pose and lock AI for the full 0.6s hurtTimer!
+    if (_current == _BAnim.hurt) {
+      if (hurtTimer > 0) {
+        return; // Lock AI and hold hurt animation
       } else {
         _current = _BAnim.idle;
         _animGroup!.current = _BAnim.idle;

@@ -11,6 +11,10 @@ class PlayerState {
   double resolve;
   bool isIndomitable; // Active when resolve is full and triggered
 
+  // --- Stamina ---
+  double maxStamina;
+  double stamina;
+
   // --- Combat ---
   double swordDamage;
   int perfectDodges;
@@ -27,6 +31,7 @@ class PlayerState {
   PlayerState({
     this.maxHealth = GameConfig.playerMaxHealthDefault,
     this.maxResolve = GameConfig.playerMaxResolveDefault,
+    this.maxStamina = GameConfig.playerMaxStaminaDefault,
     this.swordDamage = GameConfig.playerSwordDamageDefault,
     this.oreCollected = 0,
     this.willpower = 0,
@@ -34,15 +39,17 @@ class PlayerState {
   })  : health = maxHealth,
         resolve = 0.0,
         isIndomitable = false,
+        stamina = maxStamina,
         perfectDodges = 0,
         deathCount = 0,
         enemiesKilled = 0;
 
-  /// Reset health/resolve for a new level attempt (after death).
+  /// Reset health/resolve/stamina for a new level attempt (after death).
   void resetForRetry() {
     health = maxHealth;
     resolve = 0;
     isIndomitable = false;
+    stamina = maxStamina;
   }
 
   /// Add resolve. Returns true if Indomitable is now available.
@@ -53,7 +60,7 @@ class PlayerState {
 
   /// Take damage. Returns true if the player died.
   bool takeDamage(double amount) {
-    if (isIndomitable) amount /= 2; // Half damage in Indomitable state
+    if (isIndomitable) amount *= GameConfig.playerIndomitableDefenseMultiplier;
     health = (health - amount).clamp(0, maxHealth);
     return health <= 0;
   }
@@ -63,8 +70,8 @@ class PlayerState {
     health = (health + amount).clamp(0, maxHealth);
   }
 
-  /// Get effective sword damage (doubled in Indomitable state).
-  double get effectiveDamage => isIndomitable ? swordDamage * 2 : swordDamage;
+  /// Get effective sword damage (multiplied by config during Indomitable state).
+  double get effectiveDamage => isIndomitable ? swordDamage * GameConfig.playerIndomitableDamageMultiplier : swordDamage;
 
   /// Telemetry snapshot for The Architect AI.
   Map<String, dynamic> toTelemetry() {
