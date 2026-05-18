@@ -39,7 +39,14 @@ class ArchitectBoss extends BaseEnemy {
   // Scale/alpha for squash-stretch
   double _scaleX = 1.0;
   double _scaleY = 1.0;
-  double _alpha  = 1.0;
+  double _alpha = 1.0;
+
+  // --- Death Sequence ---
+  bool _isDying = false;
+  double _deathTimer = 0;
+  double _explosionTimer = 0;
+  double _flashToggleTimer = 0;
+  bool _flashState = false;
 
   // Target position for the snap
   Vector2 _teleportTarget = Vector2.zero();
@@ -47,11 +54,11 @@ class ArchitectBoss extends BaseEnemy {
   final Random _rng = Random();
 
   ArchitectBoss({required super.position})
-      : super(
-          size: GameConfig.enemyHitboxArchitect,
-          maxHealth: GameConfig.enemyHealthArchitect,
-          contactDamage: GameConfig.enemyDamageArchitect,
-        );
+    : super(
+        size: GameConfig.enemyHitboxArchitect,
+        maxHealth: GameConfig.enemyHealthArchitect,
+        contactDamage: GameConfig.enemyDamageArchitect,
+      );
 
   @override
   int get willpowerReward => GameConfig.enemyWillArchitect;
@@ -59,9 +66,12 @@ class ArchitectBoss extends BaseEnemy {
   @override
   double get resolveReward => GameConfig.enemyResolveArchitect;
 
+  @override
+  double get healthBarYOffset => GameConfig.enemyHealthBarYOffsetArchitect;
+
   // architect/idle.png = 3360×240, 15 frames at 224×240
-  static const int    _frameCount  = 15;
-  static const double _frameWidth  = 224.0;
+  static const int _frameCount = 15;
+  static const double _frameWidth = 224.0;
   static const double _frameHeight = 240.0;
 
   @override
@@ -70,14 +80,19 @@ class ArchitectBoss extends BaseEnemy {
     try {
       final image = await game.images.load('characters/architect/idle.png');
       final anim = SpriteAnimation.spriteList(
-        List.generate(_frameCount, (i) => Sprite(image,
+        List.generate(
+          _frameCount,
+          (i) => Sprite(
+            image,
             srcPosition: Vector2(i * _frameWidth, 0),
-            srcSize: Vector2(_frameWidth, _frameHeight))),
+            srcSize: Vector2(_frameWidth, _frameHeight),
+          ),
+        ),
         stepTime: 0.07,
       );
       _idleComp = SpriteAnimationComponent(
         animation: anim,
-        size: size,
+        size: Vector2(112.0, 120.0), // visual size scaling
         anchor: Anchor.center,
         position: size / 2,
       );
@@ -91,6 +106,59 @@ class ArchitectBoss extends BaseEnemy {
 
   @override
   void update(double dt) {
+    if (_isDying) {
+      _deathTimer -= dt;
+      if (_deathTimer <= 0) {
+        // Final massive burst of arrival/teleport effects
+        for (int i = 0; i < 8; i++) {
+          final offset = Vector2(
+            _rng.nextDouble() * size.x - size.x / 2,
+            _rng.nextDouble() * size.y - size.y / 2,
+          );
+          parent?.add(TeleportEffect(center: position + size / 2 + offset));
+        }
+        removeFromParent();
+        return;
+      }
+
+      // 1. Violent Screen Shake!
+      game.onScreenShake(14.0);
+
+      // 2. Spawn continuous teleport implosion/explosion effects
+      _explosionTimer -= dt;
+      if (_explosionTimer <= 0) {
+        _explosionTimer = 0.12 + _rng.nextDouble() * 0.12;
+        final offset = Vector2(
+          _rng.nextDouble() * size.x - size.x / 2,
+          _rng.nextDouble() * size.y - size.y / 2,
+        );
+        parent?.add(TeleportEffect(center: position + size / 2 + offset));
+      }
+
+      // 3. Rapidly flash between white and red
+      _flashToggleTimer -= dt;
+      if (_flashToggleTimer <= 0) {
+        _flashToggleTimer = 0.04;
+        _flashState = !_flashState;
+      }
+
+      // 4. Distort the scale (collapse, spin, and shrink violently)
+      final progress = (2.0 - _deathTimer) / 2.0; // 0 to 1
+      _scaleX = (1.0 - progress) * (1.0 + sin(_deathTimer * 45) * 0.5);
+      _scaleY = (1.0 - progress) * (1.0 + cos(_deathTimer * 45) * 0.5);
+      _alpha = 1.0 - progress;
+
+      if (_spriteLoaded && _idleComp != null) {
+        _idleComp!.scale = Vector2(_scaleX * (facingDir == 1 ? 1 : -1), _scaleY);
+        _idleComp!.angle += 15.0 * dt; // Spin dynamically!
+        _idleComp!.paint.colorFilter = ColorFilter.mode(
+          _flashState ? const Color(0xFFFFFFFF) : const Color(0xFFFF3333),
+          BlendMode.srcATop,
+        );
+      }
+      return; // Skip normal update routines
+    }
+
     // Keep him floating and immune to gravity
     final originalY = position.y;
     super.update(dt);
@@ -106,7 +174,8 @@ class ArchitectBoss extends BaseEnemy {
 
     // --- Bob ---
     _bobTimer += dt;
-    final bobY = sin(_bobTimer * GameConfig.architectBobSpeed) *
+    final bobY =
+        sin(_bobTimer * GameConfig.architectBobSpeed) *
         GameConfig.architectBobAmplitude;
 
     // --- Teleport phases ---
@@ -124,7 +193,7 @@ class ArchitectBoss extends BaseEnemy {
         final t = 1.0 - (_phaseTimer / _shrinkTime).clamp(0.0, 1.0);
         _scaleX = 1.0 - t * 0.95;
         _scaleY = 1.0 + t * 0.8;
-        _alpha  = 1.0 - t;
+        _alpha = 1.0 - t;
         if (_phaseTimer <= 0) {
           _phase = _TeleportPhase.vanish;
         }
@@ -143,9 +212,11 @@ class ArchitectBoss extends BaseEnemy {
         final t = 1.0 - (_phaseTimer / _shrinkTime).clamp(0.0, 1.0);
         _scaleX = t;
         _scaleY = 1.0 + (1.0 - t) * 0.8;
-        _alpha  = t;
+        _alpha = t;
         if (_phaseTimer <= 0) {
-          _scaleX = 1.0; _scaleY = 1.0; _alpha = 1.0;
+          _scaleX = 1.0;
+          _scaleY = 1.0;
+          _alpha = 1.0;
           _phase = _TeleportPhase.none;
           _teleportCooldown = GameConfig.architectTeleportInterval;
         }
@@ -162,7 +233,17 @@ class ArchitectBoss extends BaseEnemy {
     // Apply squash-stretch scale and alpha opacity directly to the sprite component
     if (_spriteLoaded && _idleComp != null) {
       _idleComp!.scale = Vector2(_scaleX * (facingDir == 1 ? 1 : -1), _scaleY);
-      _idleComp!.paint.color = const Color(0xffffffff).withOpacity(_alpha.clamp(0.0, 1.0));
+      if (hurtTimer > 0) {
+        _idleComp!.paint.colorFilter = const ColorFilter.mode(
+          Color(0xFFFFFFFF),
+          BlendMode.srcATop,
+        );
+      } else {
+        _idleComp!.paint.colorFilter = null;
+        _idleComp!.paint.color = const Color(
+          0xffffffff,
+        ).withOpacity(_alpha.clamp(0.0, 1.0));
+      }
     }
   }
 
@@ -208,7 +289,25 @@ class ArchitectBoss extends BaseEnemy {
     }
   }
 
-  // The architect isn't attacked by the player in placeholder mode
   @override
-  bool takeDamage(double _) => false;
+  bool takeDamage(double damage, {bool isPlunge = false}) {
+    if (isDead || _isDying) return false;
+    final fatal = super.takeDamage(damage, isPlunge: isPlunge);
+    if (!fatal) {
+      hurtTimer = 0.15; // Brief high-impact white flash
+    }
+    return fatal;
+  }
+
+  @override
+  void onDeath() {
+    _isDying = true;
+    _deathTimer = 2.0; // 2 seconds of glorious final boss collapse!
+    _explosionTimer = 0.1;
+    _flashToggleTimer = 0.05;
+
+    // Stop teleporting and bobbing
+    _phase = _TeleportPhase.none;
+    _teleportCooldown = 999999.0;
+  }
 }

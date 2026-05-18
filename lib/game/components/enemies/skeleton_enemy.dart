@@ -24,6 +24,7 @@ class SkeletonEnemy extends MeleeEnemy {
           contactDamage: GameConfig.enemyDamageSkeleton,
           speed: GameConfig.enemySpeedSkeleton,
           patrolRange: 110,
+          aggroRange: GameConfig.enemyAggroRangeSkeleton,
           damageDelay: 0.42,
           attackRange: GameConfig.enemyAttackRangeSkeleton,
           maxVerticalDiff: GameConfig.enemyAttackMaxVerticalDiffSkeleton,
@@ -35,6 +36,9 @@ class SkeletonEnemy extends MeleeEnemy {
 
   @override
   double get resolveReward => GameConfig.enemyResolveSkeleton;
+
+  @override
+  double get healthBarYOffset => GameConfig.enemyHealthBarYOffsetSkeleton;
 
   static final Vector2 _frame = Vector2(150, 150);
   static final Vector2 _renderSize = GameConfig.enemySizeSkeleton;
@@ -86,10 +90,10 @@ class SkeletonEnemy extends MeleeEnemy {
   }
 
   @override
-  bool takeDamage(double damage) {
-    final fatal = super.takeDamage(damage);
+  bool takeDamage(double damage, {bool isPlunge = false}) {
+    final fatal = super.takeDamage(damage, isPlunge: isPlunge);
     if (!fatal && _spriteLoaded && _animGroup != null) {
-      if (!isAttackingState) {
+      if (!isAttackingState || isPlunge) {
         _current = _SAnim.hurt;
         _animGroup!.current = _SAnim.hurt;
         _animGroup!.animationTickers?[_SAnim.hurt]?.reset();

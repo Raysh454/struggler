@@ -208,18 +208,25 @@ class LevelValidator {
     return true;
   }
 
-  /// Spike is anchored if there's a block directly below it.
+  /// Spike is anchored if there's a block below, above, left, or right.
   static bool _isSpikeAnchored(TileData spike, List<List<String?>> grid, int w, int h) {
-    final belowY = (spike.y + spike.h).round();
-    if (belowY < 0 || belowY >= h) return false;
-
     final startX = spike.x.round();
     final endX = (spike.x + spike.w).round();
+    final y = spike.y.round();
 
-    // At least one column below must be solid
     for (int x = startX; x < endX && x < w; x++) {
-      if (x >= 0 && (grid[belowY][x] == 'block' || grid[belowY][x] == 'platform')) return true;
+      if (x < 0) continue;
+      
+      // Check below
+      if (y + 1 < h && (grid[y + 1][x] == 'block' || grid[y + 1][x] == 'platform')) return true;
+      // Check above
+      if (y - 1 >= 0 && (grid[y - 1][x] == 'block' || grid[y - 1][x] == 'platform')) return true;
+      // Check left
+      if (x - 1 >= 0 && (grid[y][x - 1] == 'block' || grid[y][x - 1] == 'platform')) return true;
+      // Check right
+      if (x + 1 < w && (grid[y][x + 1] == 'block' || grid[y][x + 1] == 'platform')) return true;
     }
+    
     return false;
   }
 

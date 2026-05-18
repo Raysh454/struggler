@@ -15,6 +15,9 @@ import 'level/tile_grid.dart';
 import 'hud/game_hud.dart';
 import 'package:flame/parallax.dart';
 import 'package:flutter/widgets.dart';
+import '../ai/architect_agent.dart';
+import 'level/level_data.dart';
+import 'components/enemy.dart';
 
 /// Main game class. Manages the game world, camera, and state.
 class StruggleGame extends FlameGame
@@ -46,6 +49,11 @@ class StruggleGame extends FlameGame
   // Callback for Flutter overlay management
   final void Function(String)? onOverlayChange;
 
+  late final ArchitectAgent architectAgent;
+  Future<LevelData?>? nextLevelFuture;
+  Map<String, dynamic>? lastLevelValidatorFeedback;
+  String? currentArchitectDialogue;
+
   StruggleGame({this.onOverlayChange});
 
   @override
@@ -57,6 +65,7 @@ class StruggleGame extends FlameGame
 
     playerState = PlayerState();
     gameState = GameState();
+    architectAgent = ArchitectAgent();
 
     // Set up camera
     camera.viewfinder.anchor = Anchor.center;
@@ -73,10 +82,27 @@ class StruggleGame extends FlameGame
     // Clear the world
     world.removeAll(world.children);
 
-    // Get level data (test level for now, AI-generated later)
-    final levelData = levelId == -1
-        ? LevelManager.createGuardianRealm()
-        : LevelManager.createTestLevel(levelId);
+    LevelData levelData;
+    if (levelId == -1) {
+      levelData = LevelManager.createGuardianRealm();
+    } else {
+      if (nextLevelFuture != null) {
+        // We have a pre-fetched level!
+        // TODO: Wait for it if it's still loading
+        final fetched = await nextLevelFuture;
+        if (fetched != null) {
+          levelData = fetched;
+        } else {
+          levelData = LevelManager.createTestLevel(levelId);
+        }
+        nextLevelFuture = null; // Consume it
+      } else {
+        // Fallback or first level load
+        levelData = LevelManager.createTestLevel(levelId);
+        // We should start fetching immediately if it's the start
+        _prefetchNextLevel(levelId + 1);
+      }
+    }
 
     // Pick a random theme for the level
     final themeType = _random.nextBool() ? ThemeType.lightRocks : ThemeType.darkRocks;
@@ -131,6 +157,117 @@ class StruggleGame extends FlameGame
 
     // Start level timer
     gameState.startLevel();
+
+    // Trigger Architect Intro if dialogue exists
+    if (levelData.architectDialogue != null && levelData.architectDialogue!.isNotEmpty) {
+      currentArchitectDialogue = levelData.architectDialogue;
+      showControlsNotifier.value = false;
+      pauseEngine();
+      overlays.add('ArchitectIntro');
+    }
+  }
+
+  void checkEnemiesLeft() {
+    if (nextLevelFuture != null || gameState.currentLevel == -1) return; // Already fetching or in Guardian Realm
+    
+    // Using simple iteration to count enemies.
+    int enemiesLeft = 0;
+    for (final child in world.children) {
+      if (child is BaseEnemy && !child.isDead) {
+        enemiesLeft++;
+      }
+    }
+    
+    if (enemiesLeft == 1) {
+      // 1 enemy left! Start prefetching next level.
+      _prefetchNextLevel(gameState.currentLevel + 1);
+    }
+  }
+
+  void _prefetchNextLevel(int nextLevelId) {
+    if (nextLevelFuture != null) return;
+    print('[StruggleGame] Prefetching level $nextLevelId...');
+    
+    final telemetry = playerState.toTelemetry();
+    telemetry['previousLevelPerformance'] = {
+      'levelValidatorFeedback': lastLevelValidatorFeedback ?? {},
+    };
+    
+    nextLevelFuture = architectAgent.generateNextLevel(telemetry).then((json) {
+      if (json != null && json.containsKey('levelBlueprint')) {
+        try {
+          // Parse the AI's JSON into LevelData
+          // We need a helper method to convert it, since the AI returns a custom format.
+          return _parseLevelDataFromAI(nextLevelId, json);
+        } catch (e) {
+          print('Error parsing AI level: $e');
+        }
+      }
+      return null;
+    });
+  }
+
+  LevelData _parseLevelDataFromAI(int levelId, Map<String, dynamic> json) {
+    // This parses the JSON structure defined in prompt.md into our LevelData object.
+    final blueprint = json['levelBlueprint'] as Map<String, dynamic>;
+    final width = blueprint['width'] as int? ?? 50;
+    final height = blueprint['height'] as int? ?? 20;
+    
+    final tilesJson = blueprint['tiles'] as List<dynamic>? ?? [];
+    final objectsJson = blueprint['objects'] as List<dynamic>? ?? [];
+    
+    final List<TileData> parsedTiles = [];
+    final List<EnemyData> parsedEnemies = [];
+    final List<PickupData> parsedPickups = [];
+    
+    ({double x, double y}) spawn = (x: 2, y: 17);
+    ({double x, double y}) exit = (x: width - 3, y: 17);
+    
+    for (final tileRaw in tilesJson) {
+      final t = tileRaw as Map<String, dynamic>;
+      final type = t['type'] as String;
+      final x = (t['x'] as num).toDouble();
+      final y = (t['y'] as num).toDouble();
+      final w = (t['w'] as num?)?.toDouble() ?? 1;
+      final h = (t['h'] as num?)?.toDouble() ?? 1;
+      
+      if (type == 'PLAYER_SPAWN') {
+        spawn = (x: x, y: y);
+      } else if (type == 'EXIT_PORTAL') {
+        exit = (x: x, y: y);
+      } else if (type != 'EMPTY') {
+        parsedTiles.add(TileData(type: type.toLowerCase(), x: x, y: y, w: w, h: h));
+      }
+    }
+    
+    for (final objRaw in objectsJson) {
+      final o = objRaw as Map<String, dynamic>;
+      final objType = o['type'] as String;
+      final x = (o['x'] as num).toDouble();
+      final y = (o['y'] as num).toDouble();
+      
+      if (objType == 'ENEMY') {
+        parsedEnemies.add(EnemyData(
+          x: x, y: y, type: (o['enemyType'] as String).toLowerCase()
+        ));
+      } else if (objType == 'PICKUP') {
+        parsedPickups.add(PickupData(
+          type: (o['pickupType'] as String).toLowerCase(), x: x, y: y
+        ));
+      }
+    }
+    
+    return LevelData(
+      levelId: levelId,
+      width: width,
+      height: height,
+      spawn: spawn,
+      exit: exit,
+      tiles: parsedTiles,
+      enemies: parsedEnemies,
+      pickups: parsedPickups,
+      architectDialogue: json['architectDialogue'] as String?,
+    );
   }
 
   ParallaxComponent? _bgComponent;
@@ -175,6 +312,7 @@ class StruggleGame extends FlameGame
     if (gameState.currentLevel > 4) {
       gameState.currentLevel = 1; // Loop back to level 1 for test levels
     }
+    playerState.resetForNewLevel(); // Reset stats and heals for the new level!
     // TODO: Show level complete overlay, load next level
     loadLevel(gameState.currentLevel);
   }

@@ -57,10 +57,10 @@ abstract class BaseEnemy extends PositionComponent
     required Vector2 size,
     double maxHealth = 50,
     double contactDamage = 10,
-  })  : maxHealth = maxHealth * GameConfig.enemyHealthMultiplier,
-        contactDamage = contactDamage * GameConfig.enemyDamageMultiplier,
-        health = maxHealth * GameConfig.enemyHealthMultiplier,
-        super(position: position, size: size);
+  }) : maxHealth = maxHealth * GameConfig.enemyHealthMultiplier,
+       contactDamage = contactDamage * GameConfig.enemyDamageMultiplier,
+       health = maxHealth * GameConfig.enemyHealthMultiplier,
+       super(position: position, size: size);
 
   @override
   Future<void> onLoad() async {
@@ -164,7 +164,9 @@ abstract class BaseEnemy extends PositionComponent
     if (anim == null) return;
 
     final isFacingRight = (facingDirection == 1);
-    final shouldBeFlipped = defaultSpriteFacesLeft ? isFacingRight : !isFacingRight;
+    final shouldBeFlipped = defaultSpriteFacesLeft
+        ? isFacingRight
+        : !isFacingRight;
 
     if (shouldBeFlipped && anim.scale.x > 0) {
       anim.scale.x *= -1;
@@ -186,7 +188,9 @@ abstract class BaseEnemy extends PositionComponent
 
   @override
   void onCollisionStart(
-      Set<Vector2> intersectionPoints, PositionComponent other) {
+    Set<Vector2> intersectionPoints,
+    PositionComponent other,
+  ) {
     super.onCollisionStart(intersectionPoints, other);
     if (other is PlatformBlock) {
       _resolveBlockCollision(other);
@@ -216,13 +220,17 @@ abstract class BaseEnemy extends PositionComponent
     final myRect = toRect();
     final blockRect = block.toRect();
 
-    final overlapTop    = myRect.bottom - blockRect.top;
+    final overlapTop = myRect.bottom - blockRect.top;
     final overlapBottom = blockRect.bottom - myRect.top;
-    final overlapLeft   = myRect.right  - blockRect.left;
-    final overlapRight  = blockRect.right - myRect.left;
+    final overlapLeft = myRect.right - blockRect.left;
+    final overlapRight = blockRect.right - myRect.left;
 
-    final minOverlap = [overlapLeft, overlapRight, overlapTop, overlapBottom]
-        .reduce((a, b) => a < b ? a : b);
+    final minOverlap = [
+      overlapLeft,
+      overlapRight,
+      overlapTop,
+      overlapBottom,
+    ].reduce((a, b) => a < b ? a : b);
 
     if (block.isJumpThrough) {
       if (_ignorePlatformsTimer > 0) return;
@@ -276,46 +284,75 @@ abstract class BaseEnemy extends PositionComponent
   // ------------------------------------------------------------------ combat
 
   /// Take [damage] points. Returns true if the hit was fatal.
-  bool takeDamage(double damage) {
+  bool takeDamage(double damage, {bool isPlunge = false}) {
     if (isDead) return false;
     health -= damage;
     hurtTimer = GameConfig.enemyHurtDuration;
+    if (isPlunge) {
+      interruptAttack();
+    }
     if (health <= 0) {
       isDead = true;
       if (spawnData != null && game.gameState.currentLevel != -1) {
-        final key = '${game.gameState.currentLevel}_enemy_${spawnData.x}_${spawnData.y}';
+        final key =
+            '${game.gameState.currentLevel}_enemy_${spawnData.x}_${spawnData.y}';
         game.removedEntitiesKeys.add(key);
       }
       onDeath();
+      game.checkEnemiesLeft();
       return true;
     }
     return false;
   }
 
+  /// Override to define behaviors for interrupting active attacks/casts.
+  void interruptAttack() {}
+
   // ------------------------------------------------------------------ render
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    if (!isDead) {
+      renderHealthBar(canvas);
+    }
+  }
+
+  /// The vertical position of the health bar relative to the top of the hitbox (y = 0).
+  /// Subclasses override this to perfectly position their health bars above their visual heads.
+  double get healthBarYOffset => -6.0;
 
   /// Draws the HP bar above the enemy. Subclasses call this from render().
   void renderHealthBar(Canvas canvas) {
-    final pct  = (health / maxHealth).clamp(0.0, 1.0);
-    final barW = size.x - 4;
+    final pct = (health / maxHealth).clamp(0.0, 1.0);
+    final barW = (size.x * 0.4).clamp(16.0, 24.0);
+    final startX = (size.x - barW) / 2;
+    final startY = healthBarYOffset;
+
     canvas.drawRect(
-      Rect.fromLTWH(2, -8, barW, 4),
+      Rect.fromLTWH(startX, startY, barW, 2.5),
       Paint()..color = const Color(0xFF333333),
     );
     canvas.drawRect(
-      Rect.fromLTWH(2, -8, barW * pct, 4),
+      Rect.fromLTWH(startX, startY, barW * pct, 2.5),
       Paint()..color = const Color(0xFFFF3333),
     );
   }
 
   /// Placeholder body draw used when sprite assets haven't loaded yet.
   void renderPlaceholder(Canvas canvas, Color bodyColor) {
-    final paint = Paint()..color = hurtTimer > 0 ? const Color(0xFFFFFFFF) : bodyColor;
+    final paint = Paint()
+      ..color = hurtTimer > 0 ? const Color(0xFFFFFFFF) : bodyColor;
     canvas.drawRect(Rect.fromLTWH(2, 6, size.x - 4, size.y - 6), paint);
     canvas.drawRect(Rect.fromLTWH(4, 0, size.x - 8, 10), paint);
-    canvas.drawRect(Rect.fromLTWH(6, 3, 3, 3), Paint()..color = const Color(0xFFFF4444));
-    canvas.drawRect(Rect.fromLTWH(size.x - 10, 3, 3, 3), Paint()..color = const Color(0xFFFF4444));
-    renderHealthBar(canvas);
+    canvas.drawRect(
+      Rect.fromLTWH(6, 3, 3, 3),
+      Paint()..color = const Color(0xFFFF4444),
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(size.x - 10, 3, 3, 3),
+      Paint()..color = const Color(0xFFFF4444),
+    );
   }
 }
 

@@ -8,18 +8,14 @@ import '../struggler_game.dart';
 import 'player.dart';
 
 /// Portal used to travel to/from the Guardian's Realm.
-class GuardianPortal extends PositionComponent with CollisionCallbacks, HasGameReference<StruggleGame> {
+class GuardianPortal extends PositionComponent
+    with CollisionCallbacks, HasGameReference<StruggleGame> {
   final bool isReturn;
   double _animationTimer = 0;
   bool playerOverlapping = false;
 
-  GuardianPortal({
-    required Vector2 position,
-    this.isReturn = false,
-  }) : super(
-          position: position,
-          size: GameConfig.guardianPortalSize,
-        );
+  GuardianPortal({required Vector2 position, this.isReturn = false})
+    : super(position: position, size: GameConfig.guardianPortalSize);
 
   @override
   Future<void> onLoad() async {
@@ -49,7 +45,9 @@ class GuardianPortal extends PositionComponent with CollisionCallbacks, HasGameR
         height: size.y * pulse,
       ),
       Paint()
-        ..color = isReturn ? const Color(0x3344FF44) : const Color(0x334488FF) // Green for return, Blue for enter
+        ..color = isReturn
+            ? const Color(0x3344FF44)
+            : const Color(0x334488FF) // Green for return, Blue for enter
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
     );
 
@@ -72,7 +70,7 @@ class GuardianPortal extends PositionComponent with CollisionCallbacks, HasGameR
       canvas.save();
       canvas.translate(cx, cy);
       canvas.rotate(angle);
-      
+
       canvas.drawOval(
         Rect.fromCenter(
           center: Offset.zero,
@@ -80,7 +78,7 @@ class GuardianPortal extends PositionComponent with CollisionCallbacks, HasGameR
           height: size.y * (0.8 - i * 0.2),
         ),
         Paint()
-          ..color = isReturn 
+          ..color = isReturn
               ? const Color(0xFF66FF66).withOpacity(0.4 + 0.1 * i)
               : const Color(0xFF66B2FF).withOpacity(0.4 + 0.1 * i)
           ..style = PaintingStyle.stroke
@@ -91,11 +89,7 @@ class GuardianPortal extends PositionComponent with CollisionCallbacks, HasGameR
 
     // Portal border
     canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(cx, cy),
-        width: size.x,
-        height: size.y,
-      ),
+      Rect.fromCenter(center: Offset(cx, cy), width: size.x, height: size.y),
       Paint()
         ..color = isReturn ? const Color(0xFF88FF88) : const Color(0xFF88CCFF)
         ..style = PaintingStyle.stroke
@@ -117,15 +111,15 @@ class GuardianPortal extends PositionComponent with CollisionCallbacks, HasGameR
         textDirection: TextDirection.ltr,
       );
       textPainter.layout();
-      textPainter.paint(
-        canvas, 
-        Offset(cx - textPainter.width / 2, -15),
-      );
+      textPainter.paint(canvas, Offset(cx - textPainter.width / 2, -15));
     }
   }
 
   @override
-  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+  void onCollisionStart(
+    Set<Vector2> intersectionPoints,
+    PositionComponent other,
+  ) {
     super.onCollisionStart(intersectionPoints, other);
     if (other is Player) {
       playerOverlapping = true;

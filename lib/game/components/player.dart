@@ -15,6 +15,7 @@ import '../components/guardian_portal.dart';
 import '../components/exit_portal.dart';
 import '../components/enemy.dart';
 import '../struggler_game.dart';
+import 'cat.dart';
 
 enum PlayerAnimationState {
   idle,
@@ -236,7 +237,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         if (!_plungeHitEnemies.contains(enemy) && playerRect.overlaps(enemy.toRect())) {
           _plungeHitEnemies.add(enemy);
           final damage = game.playerState.effectiveDamage;
-          final killed = enemy.takeDamage(damage);
+          final killed = enemy.takeDamage(damage, isPlunge: true);
           if (game.playerState.isIndomitable) {
             game.playerState.heal(damage * GameConfig.playerIndomitableLifestealRatio);
           }
@@ -325,6 +326,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       }
       if (event.logicalKey == LogicalKeyboardKey.keyR) {
         activateIndomitable();
+      }
+      if (event.logicalKey == LogicalKeyboardKey.keyH) {
+        triggerHopeHeal();
       }
       if (event.logicalKey == LogicalKeyboardKey.keyE) {
         if (currentPortal != null) {
@@ -781,6 +785,14 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   void deactivateIndomitable() {
     game.playerState.isIndomitable = false;
     game.playerState.resolve = 0;
+  }
+
+  /// Manually trigger Hope's heal.
+  void triggerHopeHeal() {
+    final cat = game.world.children.whereType<CompanionCat>().firstOrNull;
+    if (cat != null) {
+      cat.manualHeal();
+    }
   }
 
   @override

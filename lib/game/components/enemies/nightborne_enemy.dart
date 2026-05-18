@@ -32,7 +32,7 @@ class NightborneEnemy extends MeleeEnemy {
           speed: GameConfig.enemySpeedNightborne,
           patrolRange: 130,
           attackCooldown: 0.9,
-          aggroRange: GameConfig.enemyAggroRange * 1.3,
+          aggroRange: GameConfig.enemyAggroRangeNightborne,
           damageDelay: 0.56,
           attackRange: GameConfig.enemyAttackRangeNightborne,
           maxVerticalDiff: GameConfig.enemyAttackMaxVerticalDiffNightborne,
@@ -44,6 +44,9 @@ class NightborneEnemy extends MeleeEnemy {
 
   @override
   double get resolveReward => GameConfig.enemyResolveNightborne;
+
+  @override
+  double get healthBarYOffset => GameConfig.enemyHealthBarYOffsetNightborne;
 
   static final Vector2 _frame      = Vector2(80, 80);
   static final Vector2 _renderSize = GameConfig.enemySizeNightborne;
@@ -147,11 +150,11 @@ class NightborneEnemy extends MeleeEnemy {
   }
 
   @override
-  bool takeDamage(double damage) {
+  bool takeDamage(double damage, {bool isPlunge = false}) {
     if (isDead) return false;
-    final fatal = super.takeDamage(damage);
+    final fatal = super.takeDamage(damage, isPlunge: isPlunge);
     if (!fatal && _spriteLoaded && _animGroup != null) {
-      if (!isAttackingState) {
+      if (!isAttackingState || isPlunge) {
         _current = _NAnim.hurt;
         _animGroup!.current = _NAnim.hurt;
         _animGroup!.animationTickers?[_NAnim.hurt]?.reset();

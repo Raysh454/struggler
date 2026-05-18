@@ -164,6 +164,7 @@ class ArcaneArcherEnemy extends RangedEnemy {
           maxHealth: GameConfig.enemyHealthArcher,
           contactDamage: GameConfig.enemyDamageArcher,
           speed: GameConfig.enemySpeedArcher,
+          aggroRange: GameConfig.enemyAggroRangeArcher,
           fireCooldown: GameConfig.enemyRangedFireCooldown,
         );
 
@@ -172,6 +173,9 @@ class ArcaneArcherEnemy extends RangedEnemy {
 
   @override
   double get resolveReward => GameConfig.enemyResolveArcher;
+
+  @override
+  double get healthBarYOffset => GameConfig.enemyHealthBarYOffsetArcher;
 
   // Archer sheet: 512×512, 64×64 frames
   static final Vector2 _frame = Vector2(64, 64);
@@ -280,9 +284,18 @@ class ArcaneArcherEnemy extends RangedEnemy {
   }
 
   @override
-  bool takeDamage(double damage) {
+  void interruptAttack() {
+    _current = _ArcherAnim.idle;
+    if (_animGroup != null) {
+      _animGroup!.current = _ArcherAnim.idle;
+    }
+    _arrowFired = true; // Prevent arrow release!
+  }
+
+  @override
+  bool takeDamage(double damage, {bool isPlunge = false}) {
     if (isDead) return false;
-    final fatal = super.takeDamage(damage);
+    final fatal = super.takeDamage(damage, isPlunge: isPlunge);
     if (!fatal) {
       hurtTimer = GameConfig.enemyArcherHurtDuration;
 

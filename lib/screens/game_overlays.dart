@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../game/struggler_game.dart';
+import '../game/config.dart';
 
 /// Glassmorphic button for premium styling.
 class GlassButton extends StatefulWidget {
@@ -39,7 +40,9 @@ class _GlassButtonState extends State<GlassButton> {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           decoration: BoxDecoration(
             color: widget.enabled
-                ? (_isHovered ? baseColor.withOpacity(0.3) : baseColor.withOpacity(0.15))
+                ? (_isHovered
+                      ? baseColor.withOpacity(0.3)
+                      : baseColor.withOpacity(0.15))
                 : Colors.white10,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
@@ -54,7 +57,7 @@ class _GlassButtonState extends State<GlassButton> {
                       color: baseColor.withOpacity(0.4),
                       blurRadius: 8,
                       spreadRadius: 1,
-                    )
+                    ),
                   ]
                 : [],
           ),
@@ -113,10 +116,7 @@ class MainMenuOverlay extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                       letterSpacing: 4,
                       shadows: [
-                        Shadow(
-                          color: Color(0xAAFF2E63),
-                          blurRadius: 16,
-                        ),
+                        Shadow(color: Color(0xAAFF2E63), blurRadius: 16),
                       ],
                     ),
                   ),
@@ -141,9 +141,9 @@ class MainMenuOverlay extends StatelessWidget {
                       game.showControlsNotifier.value = true;
                     },
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Control Instructions Panel
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -165,12 +165,30 @@ class MainMenuOverlay extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: 8),
-                        _ControlRow(keyName: 'A / D', action: 'Move Left / Right'),
-                        _ControlRow(keyName: 'W', action: 'Jump (Double Jump available)'),
-                        _ControlRow(keyName: 'Space', action: 'Dodge (Stamina-Draining I-Frames)'),
-                        _ControlRow(keyName: 'R', action: 'Indomitable Lifesteal (Full Resolve)'),
-                        _ControlRow(keyName: 'E', action: 'Interact / Enter Realm Portal'),
-                        _ControlRow(keyName: 'Left Click', action: 'Sword Attack Combos'),
+                        _ControlRow(
+                          keyName: 'A / D',
+                          action: 'Move Left / Right',
+                        ),
+                        _ControlRow(
+                          keyName: 'W',
+                          action: 'Jump (Double Jump available)',
+                        ),
+                        _ControlRow(
+                          keyName: 'Space',
+                          action: 'Dodge (Stamina-Draining I-Frames)',
+                        ),
+                        _ControlRow(
+                          keyName: 'R',
+                          action: 'Indomitable Lifesteal (Full Resolve)',
+                        ),
+                        _ControlRow(
+                          keyName: 'E',
+                          action: 'Interact / Enter Realm Portal',
+                        ),
+                        _ControlRow(
+                          keyName: 'Left Click',
+                          action: 'Sword Attack Combos',
+                        ),
                       ],
                     ),
                   ),
@@ -216,10 +234,7 @@ class _ControlRow extends StatelessWidget {
           Expanded(
             child: Text(
               action,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 10,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 10),
             ),
           ),
         ],
@@ -232,10 +247,12 @@ class _ControlRow extends StatelessWidget {
 class GuardianUpgradesOverlay extends StatefulWidget {
   final StruggleGame game;
 
-  const GuardianUpgradesOverlay({required this.game, Key? key}) : super(key: key);
+  const GuardianUpgradesOverlay({required this.game, Key? key})
+    : super(key: key);
 
   @override
-  State<GuardianUpgradesOverlay> createState() => _GuardianUpgradesOverlayState();
+  State<GuardianUpgradesOverlay> createState() =>
+      _GuardianUpgradesOverlayState();
 }
 
 class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
@@ -257,7 +274,9 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
                 color: Colors.black.withOpacity(0.7),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFF00E5FF).withOpacity(0.4), // Serene Cyan
+                  color: const Color(
+                    0xFF00E5FF,
+                  ).withOpacity(0.4), // Serene Cyan
                   width: 2,
                 ),
               ),
@@ -273,10 +292,7 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
                       fontWeight: FontWeight.w900,
                       letterSpacing: 2,
                       shadows: [
-                        Shadow(
-                          color: Color(0x8800E5FF),
-                          blurRadius: 12,
-                        ),
+                        Shadow(color: Color(0x8800E5FF), blurRadius: 12),
                       ],
                     ),
                   ),
@@ -357,9 +373,26 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
                     currentValue: '${state.swordDamage.round()} DMG',
                     level: 'Lvl ${state.swordUpgradeLevel}',
                     costDescription: '${state.swordUpgradeCost} Will + 1 Dia',
-                    canUpgrade: state.willpower >= state.swordUpgradeCost && state.diamondsCollected >= 1,
+                    canUpgrade:
+                        state.willpower >= state.swordUpgradeCost &&
+                        state.diamondsCollected >= 1,
                     onUpgrade: () {
                       if (state.upgradeSword()) {
+                        setState(() {});
+                      }
+                    },
+                  ),
+                  _UpgradeItem(
+                    title: "Hope's Sanctuary",
+                    subtitle:
+                        'Increases Hope\'s capacity to heal (+1) and damage (+10)',
+                    currentValue:
+                        '${state.catHealsMax} Heals / ${(GameConfig.catAttackDamage + (state.catHealUpgradeLevel - 1) * GameConfig.catAttackDamagePerLevel).round()} Dmg',
+                    level: 'Lvl ${state.catHealUpgradeLevel}',
+                    costDescription: '${state.catHealUpgradeCost} Will',
+                    canUpgrade: state.willpower >= state.catHealUpgradeCost,
+                    onUpgrade: () {
+                      if (state.upgradeCatHeals()) {
                         setState(() {});
                       }
                     },
@@ -486,7 +519,10 @@ class _UpgradeItem extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1.5,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0x3300E5FF),
                         borderRadius: BorderRadius.circular(4),
@@ -522,7 +558,7 @@ class _UpgradeItem extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Cost indicator and Upgrade Button
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -530,7 +566,9 @@ class _UpgradeItem extends StatelessWidget {
               Text(
                 costDescription,
                 style: TextStyle(
-                  color: canUpgrade ? const Color(0xFF00FF88) : Colors.redAccent.shade100,
+                  color: canUpgrade
+                      ? const Color(0xFF00FF88)
+                      : Colors.redAccent.shade100,
                   fontSize: 9,
                   fontWeight: FontWeight.bold,
                 ),
@@ -539,9 +577,14 @@ class _UpgradeItem extends StatelessWidget {
               GestureDetector(
                 onTap: canUpgrade ? onUpgrade : null,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: canUpgrade ? const Color(0xFF00E5FF) : Colors.white10,
+                    color: canUpgrade
+                        ? const Color(0xFF00E5FF)
+                        : Colors.white10,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -557,6 +600,202 @@ class _UpgradeItem extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The Architect Intro Overlay displayed at the start of an AI-generated level.
+class ArchitectIntroOverlay extends StatelessWidget {
+  final StruggleGame game;
+  final String dialogue;
+
+  const ArchitectIntroOverlay({required this.game, required this.dialogue, Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              width: 500,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFB71C1C), width: 2),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x66B71C1C), blurRadius: 20, spreadRadius: 2),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFFB71C1C), width: 2),
+                      borderRadius: BorderRadius.circular(8),
+                      image: const DecorationImage(
+                        image: AssetImage('assets/images/characters/architect/dialogue.png'),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'THE ARCHITECT',
+                          style: TextStyle(
+                            color: Color(0xFFFF5252),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          dialogue,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontStyle: FontStyle.italic,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: GlassButton(
+                            label: 'CONTINUE',
+                            color: const Color(0xFFB71C1C),
+                            onTap: () {
+                              game.overlays.remove('ArchitectIntro');
+                              game.resumeEngine();
+                              game.showControlsNotifier.value = true;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The Top-Right HUD Dialogue box for dynamic in-game taunts.
+class TopRightDialogueOverlay extends StatefulWidget {
+  final String dialogue;
+
+  const TopRightDialogueOverlay({required this.dialogue, Key? key}) : super(key: key);
+
+  @override
+  State<TopRightDialogueOverlay> createState() => _TopRightDialogueOverlayState();
+}
+
+class _TopRightDialogueOverlayState extends State<TopRightDialogueOverlay> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    
+    _controller.forward();
+    
+    // Auto dismiss after 5 seconds
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) {
+        _controller.reverse();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 20,
+      right: 20,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Container(
+          width: 300,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.7),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFB71C1C), width: 1.5),
+            boxShadow: const [
+              BoxShadow(color: Color(0x33B71C1C), blurRadius: 10, spreadRadius: 1),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFB71C1C), width: 1),
+                  borderRadius: BorderRadius.circular(4),
+                  image: const DecorationImage(
+                    image: AssetImage('assets/images/characters/architect/dialogue.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'THE ARCHITECT',
+                      style: TextStyle(
+                        color: Color(0xFFFF5252),
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.dialogue,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -26,6 +26,7 @@ class GoblinEnemy extends MeleeEnemy {
           speed: GameConfig.enemySpeedGoblin,
           patrolRange: 90,
           attackCooldown: 0.9,
+          aggroRange: GameConfig.enemyAggroRangeGoblin,
           damageDelay: 0.35,
           attackRange: GameConfig.enemyAttackRangeGoblin,
           maxVerticalDiff: GameConfig.enemyAttackMaxVerticalDiffGoblin,
@@ -37,6 +38,9 @@ class GoblinEnemy extends MeleeEnemy {
 
   @override
   double get resolveReward => GameConfig.enemyResolveGoblin;
+
+  @override
+  double get healthBarYOffset => GameConfig.enemyHealthBarYOffsetGoblin;
 
   static final Vector2 _frame = Vector2(150, 150);
   static final Vector2 _renderSize = GameConfig.enemySizeGoblin;
@@ -86,11 +90,11 @@ class GoblinEnemy extends MeleeEnemy {
   }
 
   @override
-  bool takeDamage(double damage) {
+  bool takeDamage(double damage, {bool isPlunge = false}) {
     if (isDead) return false;
-    final fatal = super.takeDamage(damage);
+    final fatal = super.takeDamage(damage, isPlunge: isPlunge);
     if (!fatal && _spriteLoaded && _animGroup != null) {
-      if (!isAttackingState) {
+      if (!isAttackingState || isPlunge) {
         _current = _GAnim.hurt;
         _animGroup!.current = _GAnim.hurt;
         _animGroup!.animationTickers?[_GAnim.hurt]?.reset();

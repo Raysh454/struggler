@@ -28,6 +28,8 @@ class PlayerState {
   int resolveUpgradeLevel;
   int staminaUpgradeLevel;
   int swordUpgradeLevel;
+  int catHealUpgradeLevel;
+  int catHealsRemaining;
 
   // --- Lost Will (Death Mechanics) ---
   int lostWillpower = 0;
@@ -52,20 +54,24 @@ class PlayerState {
     this.resolveUpgradeLevel = 1,
     this.staminaUpgradeLevel = 1,
     this.swordUpgradeLevel = 1,
+    this.catHealUpgradeLevel = 1,
   })  : health = maxHealth,
         resolve = 0.0,
         isIndomitable = false,
         stamina = maxStamina,
         perfectDodges = 0,
         deathCount = 0,
-        enemiesKilled = 0;
+        enemiesKilled = 0,
+        catHealsRemaining = GameConfig.catHealsPerLevel;
 
-  // --- Upgrade Cost Calculations ---
-  // Cost = 100 * 2^(level - 1)
-  int get healthUpgradeCost => 100 * (1 << (healthUpgradeLevel - 1));
-  int get resolveUpgradeCost => 100 * (1 << (resolveUpgradeLevel - 1));
-  int get staminaUpgradeCost => 100 * (1 << (staminaUpgradeLevel - 1));
-  int get swordUpgradeCost => 100 * (1 << (swordUpgradeLevel - 1));
+  // Cost = BaseCost * 2^(level - 1)
+  int get healthUpgradeCost => GameConfig.upgradeHealthBaseCost * (1 << (healthUpgradeLevel - 1));
+  int get resolveUpgradeCost => GameConfig.upgradeResolveBaseCost * (1 << (resolveUpgradeLevel - 1));
+  int get staminaUpgradeCost => GameConfig.upgradeStaminaBaseCost * (1 << (staminaUpgradeLevel - 1));
+  int get swordUpgradeCost => GameConfig.upgradeSwordBaseCost * (1 << (swordUpgradeLevel - 1));
+  int get catHealUpgradeCost => GameConfig.catHealUpgradeBaseCost * (1 << (catHealUpgradeLevel - 1));
+
+  int get catHealsMax => GameConfig.catHealsPerLevel + (catHealUpgradeLevel - 1);
 
   // --- Upgrade Execution ---
   bool upgradeHealth() {
@@ -115,16 +121,36 @@ class PlayerState {
     return false;
   }
 
-  /// Reset health/resolve/stamina for a new level attempt (after death).
+  bool upgradeCatHeals() {
+    final cost = catHealUpgradeCost;
+    if (willpower >= cost) {
+      willpower -= cost;
+      catHealUpgradeLevel++;
+      catHealsRemaining++;
+      return true;
+    }
+    return false;
+  }
+
   void resetForRetry() {
     health = maxHealth;
     resolve = 0;
     isIndomitable = false;
     stamina = maxStamina;
+    catHealsRemaining = catHealsMax;
 
     // Death Mechanics: Old lost will is overwritten by current will. Diamonds are retained!
     lostWillpower = willpower;
     willpower = 0;
+  }
+
+  /// Reset health/resolve/stamina and restore manual heals for a new level.
+  void resetForNewLevel() {
+    health = maxHealth;
+    resolve = 0;
+    isIndomitable = false;
+    stamina = maxStamina;
+    catHealsRemaining = catHealsMax;
   }
 
   /// Add resolve. Returns true if Indomitable is now available.

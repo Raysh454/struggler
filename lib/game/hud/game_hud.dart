@@ -87,17 +87,28 @@ class GameHud extends PositionComponent with HasGameReference<StruggleGame> {
     );
 
     // --- Level Indicator ---
-    _drawText(canvas, 'LEVEL $currentLevel', 0, 68, 14);
+    _drawText(canvas, 'LEVEL $currentLevel', 0, 68, 13);
 
     // --- Enemy Counter ---
     final enemiesRemaining = game.world.children.whereType<BaseEnemy>().where((e) => !e.isDead).length;
     _drawText(
       canvas,
       'ENEMIES: $enemiesRemaining',
-      120,
+      105,
       68,
       12,
       color: enemiesRemaining == 0 ? const Color(0xFF44FF44) : const Color(0xFFFF5555),
+    );
+
+    // --- Hope Heals Counter ---
+    final healsRemaining = playerState.catHealsRemaining;
+    _drawText(
+      canvas,
+      'HEALS: $healsRemaining/${playerState.catHealsMax}',
+      210,
+      68,
+      12,
+      color: healsRemaining > 0 ? const Color(0xFF00FF88) : const Color(0xFFFF5555),
     );
 
     // --- Death Count ---

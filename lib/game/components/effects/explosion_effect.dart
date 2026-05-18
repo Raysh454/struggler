@@ -21,9 +21,9 @@ class ExplosionEffect extends PositionComponent
     double damage = GameConfig.nightbornExplosionDamage,
   }) : damage = damage * GameConfig.enemyDamageMultiplier,
        super(
-          position: center - Vector2.all(splashRadius),
-          size: Vector2.all(splashRadius * 2),
-        );
+         position: center - Vector2.all(splashRadius),
+         size: Vector2.all(splashRadius * 2),
+       );
 
   @override
   void update(double dt) {
@@ -42,8 +42,7 @@ class ExplosionEffect extends PositionComponent
     try {
       final player = parent?.children.whereType<Player>().firstOrNull;
       if (player == null) return;
-      final dist = (player.position + player.size / 2) -
-          (position + size / 2);
+      final dist = (player.position + player.size / 2) - (position + size / 2);
       if (dist.length <= splashRadius && !player.isInvincible) {
         player.receiveDamage(damage);
       }
@@ -62,8 +61,7 @@ class ExplosionEffect extends PositionComponent
       center,
       currentRadius,
       Paint()
-        ..color = Color.fromARGB(
-            (200 * alpha).round(), 255, 100, 0)
+        ..color = Color.fromARGB((200 * alpha).round(), 255, 100, 0)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
@@ -72,9 +70,7 @@ class ExplosionEffect extends PositionComponent
     canvas.drawCircle(
       center,
       currentRadius * 0.5,
-      Paint()
-        ..color = Color.fromARGB(
-            (150 * alpha).round(), 255, 200, 50),
+      Paint()..color = Color.fromARGB((150 * alpha).round(), 255, 200, 50),
     );
   }
 }

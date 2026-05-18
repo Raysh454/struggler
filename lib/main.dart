@@ -50,6 +50,13 @@ class _StruggleAppState extends State<StruggleApp> {
               overlayBuilderMap: {
                 'MainMenu': (context, StruggleGame game) => MainMenuOverlay(game: game),
                 'GuardianUpgrades': (context, StruggleGame game) => GuardianUpgradesOverlay(game: game),
+                'ArchitectIntro': (context, StruggleGame game) => ArchitectIntroOverlay(
+                  game: game,
+                  dialogue: game.currentArchitectDialogue ?? '...',
+                ),
+                'ArchitectTopRightDialogue': (context, StruggleGame game) => TopRightDialogueOverlay(
+                  dialogue: game.currentArchitectDialogue ?? '...',
+                ),
               },
             ),
 
@@ -137,6 +144,13 @@ class _TouchControls extends StatelessWidget {
                         }
                       },
                       color: const Color(0xFF00E5FF),
+                    ),
+                    const SizedBox(width: 8),
+                    _ControlButton(
+                      icon: Icons.favorite,
+                      label: 'HEAL',
+                      onDown: () => game.player.triggerHopeHeal(),
+                      color: const Color(0xFF00FF88),
                     ),
                     const SizedBox(width: 8),
                     _ControlButton(

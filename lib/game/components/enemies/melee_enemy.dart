@@ -26,7 +26,7 @@ abstract class MeleeEnemy extends BaseEnemy {
   late double _patrolOriginX;
 
   double _attackCooldownTimer = 0;
-  double _jumpCooldownTimer   = 0;
+  double _jumpCooldownTimer = 0;
 
   // Delayed damage to sync with active attack animation frames
   double _damageDelayTimer = 0;
@@ -41,12 +41,12 @@ abstract class MeleeEnemy extends BaseEnemy {
     required super.size,
     super.maxHealth,
     super.contactDamage,
-    this.patrolRange  = 100.0,
-    this.speed        = 70.0,
-    this.aggroRange   = GameConfig.enemyAggroRange,
-    this.attackRange  = GameConfig.enemyAttackRange,
+    this.patrolRange = 100.0,
+    this.speed = 70.0,
+    this.aggroRange = GameConfig.enemyAggroRange,
+    this.attackRange = GameConfig.enemyAttackRange,
     this.attackCooldown = GameConfig.enemyMeleeAttackCooldown,
-    this.damageDelay  = 0.25,
+    this.damageDelay = 0.25,
     this.maxVerticalDiff = GameConfig.enemyAttackMaxVerticalDiff,
     this.attackAnimDuration = 0.56,
   });
@@ -66,8 +66,8 @@ abstract class MeleeEnemy extends BaseEnemy {
       return;
     }
     if (_attackCooldownTimer > 0) _attackCooldownTimer -= dt;
-    if (_jumpCooldownTimer   > 0) _jumpCooldownTimer   -= dt;
-    if (_attackAnimTimer     > 0) _attackAnimTimer     -= dt;
+    if (_jumpCooldownTimer > 0) _jumpCooldownTimer -= dt;
+    if (_attackAnimTimer > 0) _attackAnimTimer -= dt;
 
     if (_damageDelayTimer > 0) {
       _damageDelayTimer -= dt;
@@ -89,14 +89,18 @@ abstract class MeleeEnemy extends BaseEnemy {
 
   void _runAI(double dt) {
     final player = _player();
-    if (player == null) { _patrol(dt); return; }
+    if (player == null) {
+      _patrol(dt);
+      return;
+    }
 
     final playerCenter = player.position.x + player.size.x / 2;
     final enemyCenter = position.x + size.x / 2;
 
     final dx = (playerCenter - enemyCenter).abs();
     // Compare foot-level vertical heights to support different hitbox heights (e.g. Skeleton 72px vs Player 48px)
-    final dy = ((player.position.y + player.size.y) - (position.y + size.y)).abs();
+    final dy = ((player.position.y + player.size.y) - (position.y + size.y))
+        .abs();
 
     if (dx < aggroRange && dy < 180) {
       // Face the player when alert (lock direction during the active attack animation to prevent visual jitter,
@@ -127,14 +131,20 @@ abstract class MeleeEnemy extends BaseEnemy {
   }
 
   void _patrol(double dt) {
+    if (patrolRange == 0) return;
     final step = speed * facingDirection * dt;
     if (isOnGround && wouldFall(step)) {
+      // If we would fall in the opposite direction too, we are trapped on a tiny ledge.
+      // Stand still and do not flip repeatedly.
+      if (wouldFall(-step)) {
+        return;
+      }
       facingDirection *= -1;
       return;
     }
     position.x += step;
     if (position.x > _patrolOriginX + patrolRange) facingDirection = -1;
-    if (position.x < _patrolOriginX - patrolRange) facingDirection =  1;
+    if (position.x < _patrolOriginX - patrolRange) facingDirection = 1;
   }
 
   void _chasePlayer(Player player, double dt) {
@@ -164,11 +174,13 @@ abstract class MeleeEnemy extends BaseEnemy {
       final closeHorizontally = (player.position.x - position.x).abs() < 48.0;
       // 2. Or, trying to chase but blocked horizontally (not moving)
       final blocked = wantsToMove && !_isMovingThisFrame;
-      
+
       // Do not jump if we are at a ledge/pit (jumping forward would plunge us into the void)
       final atLedge = wouldFall(facingDirection * 12.0);
-      
-      if (playerOnHigherPlatform && (closeHorizontally || blocked) && !atLedge) {
+
+      if (playerOnHigherPlatform &&
+          (closeHorizontally || blocked) &&
+          !atLedge) {
         jump();
         _jumpCooldownTimer = 3.0; // Cooldown of 3.0s
       }
@@ -200,12 +212,14 @@ abstract class MeleeEnemy extends BaseEnemy {
     // Check distance using center-to-center logic to solve hitbox size discrepancies
     final dx = (playerCenter - enemyCenter).abs();
     // Compare foot-level vertical heights to support different hitbox heights (e.g. Skeleton 72px vs Player 48px)
-    final dy = ((player.position.y + player.size.y) - (position.y + size.y)).abs();
-    
+    final dy = ((player.position.y + player.size.y) - (position.y + size.y))
+        .abs();
+
     // Ensure the attack only hits targets in front of the enemy,
     // or if their bounding boxes overlap horizontally (standing extremely close).
     final overlapping = dx <= (size.x + player.size.x) / 2 - 4.0;
-    final isPlayerInFront = overlapping || ((playerCenter - enemyCenter) * facingDirection > 0);
+    final isPlayerInFront =
+        overlapping || ((playerCenter - enemyCenter) * facingDirection > 0);
 
     if (dx <= attackRange + GameConfig.enemyAttackReachPadding &&
         dy <= maxVerticalDiff &&
@@ -219,10 +233,17 @@ abstract class MeleeEnemy extends BaseEnemy {
         } else {
           // Reward perfect dodge if invincible during the actual hit frame!
           game.playerState.perfectDodges++;
-          //game.playerState.addResolve(25);
+          game.playerState.addResolve(5);
         }
       }
     }
+    _swingTarget = null;
+  }
+
+  @override
+  void interruptAttack() {
+    _damageDelayTimer = 0.0;
+    _attackAnimTimer = 0.0;
     _swingTarget = null;
   }
 

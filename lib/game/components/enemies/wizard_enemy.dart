@@ -27,6 +27,7 @@ class WizardEnemy extends RangedEnemy {
           maxHealth: GameConfig.enemyHealthWizard,
           contactDamage: GameConfig.enemyDamageWizard,
           speed: GameConfig.enemySpeedWizard,
+          aggroRange: GameConfig.enemyAggroRangeWizard,
           fireCooldown: GameConfig.enemyWizardFireCooldown,
         );
 
@@ -35,6 +36,9 @@ class WizardEnemy extends RangedEnemy {
 
   @override
   double get resolveReward => GameConfig.enemyResolveWizard;
+
+  @override
+  double get healthBarYOffset => GameConfig.enemyHealthBarYOffsetWizard;
 
   static final Vector2 _renderSize = GameConfig.enemySizeWizard;
 
@@ -159,9 +163,15 @@ class WizardEnemy extends RangedEnemy {
       parent?.children.whereType<Player>().firstOrNull;
 
   @override
-  bool takeDamage(double damage) {
+  void interruptAttack() {
+    _setAnimation(_WAnim.idle);
+    _orbFired = true; // Prevent orb spawning!
+  }
+
+  @override
+  bool takeDamage(double damage, {bool isPlunge = false}) {
     if (isDead) return false;
-    final fatal = super.takeDamage(damage);
+    final fatal = super.takeDamage(damage, isPlunge: isPlunge);
     if (!fatal) {
       hurtTimer = GameConfig.enemyWizardHurtDuration;
 

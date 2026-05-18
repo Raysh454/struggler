@@ -30,6 +30,7 @@ class BringerEnemy extends MeleeEnemy {
           speed: GameConfig.enemySpeedBringer,
           patrolRange: 80,
           attackCooldown: 1.5,
+          aggroRange: GameConfig.enemyAggroRangeBringer,
           damageDelay: 0.30,
           attackRange: GameConfig.enemyAttackRangeBringer,
           maxVerticalDiff: GameConfig.enemyAttackMaxVerticalDiffBringer,
@@ -41,6 +42,9 @@ class BringerEnemy extends MeleeEnemy {
 
   @override
   double get resolveReward => GameConfig.enemyResolveBringer;
+
+  @override
+  double get healthBarYOffset => GameConfig.enemyHealthBarYOffsetBringer;
 
   @override
   bool get defaultSpriteFacesLeft => true;
@@ -96,11 +100,18 @@ class BringerEnemy extends MeleeEnemy {
   bool get isAttackingState => _current == _BAnim.attack || _casting;
 
   @override
-  bool takeDamage(double damage) {
+  void interruptAttack() {
+    _casting = false;
+    _castTimer = 0.0;
+    _spellTimer = GameConfig.bringerSpellInterval;
+  }
+
+  @override
+  bool takeDamage(double damage, {bool isPlunge = false}) {
     if (isDead) return false;
-    final fatal = super.takeDamage(damage);
+    final fatal = super.takeDamage(damage, isPlunge: isPlunge);
     if (!fatal && _spriteLoaded && _animGroup != null) {
-      if (!isAttackingState) {
+      if (!isAttackingState || isPlunge) {
         _casting = false; // Interrupted cast!
         _current = _BAnim.hurt;
         _animGroup!.current = _BAnim.hurt;

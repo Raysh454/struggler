@@ -42,10 +42,12 @@ class LevelManager {
     final components = <Component>[];
 
     // Preprocess tiles into a grid for O(1) neighbor lookups
-    final grid = TileGrid.fromTiles(validatedData.tiles, validatedData.width, validatedData.height);
-    if (game is StruggleGame) {
-      game.activeGrid = grid;
-    }
+    final grid = TileGrid.fromTiles(
+      validatedData.tiles,
+      validatedData.width,
+      validatedData.height,
+    );
+    game.activeGrid = grid;
 
     // --- Tiles ---
     for (final tile in validatedData.tiles) {
@@ -54,33 +56,48 @@ class LevelManager {
 
       switch (tile.type) {
         case 'block':
-          components.add(PlatformBlock(
-            position: pos,
-            size: size,
-            theme: theme,
-            grid: grid,
-          ));
-          components.add(PillarComponent(
-            theme: theme,
-            grid: grid,
-            position: Vector2(pos.x, pos.y + size.y),
-            size: Vector2(size.x, 2000),
-          ));
+          components.add(
+            PlatformBlock(position: pos, size: size, theme: theme, grid: grid),
+          );
+          components.add(
+            PillarComponent(
+              theme: theme,
+              grid: grid,
+              position: Vector2(pos.x, pos.y + size.y),
+              size: Vector2(size.x, 2000),
+            ),
+          );
           break;
         case 'platform':
-          components.add(PlatformBlock(
-            position: pos,
-            size: size,
-            theme: theme,
-            grid: grid,
-            isJumpThrough: true,
-          ));
+          components.add(
+            PlatformBlock(
+              position: pos,
+              size: size,
+              theme: theme,
+              grid: grid,
+              isJumpThrough: true,
+            ),
+          );
           break;
         case 'lava':
-          components.add(Lava(position: pos, size: size, theme: theme, grid: grid));
+          components.add(
+            Lava(position: pos, size: size, theme: theme, grid: grid),
+          );
           break;
         case 'spike':
-          components.add(Spike(position: Vector2(pos.x, pos.y + 3), size: size, theme: theme));
+          // Spike handles its own +3 or -3 offset depending on orientation
+          // But it needs tile size, which is passed in size. We just need to give it grid and tile coordinates.
+          // Note that a tile block might be w > 1, so we should really pass the base tileX.
+          components.add(
+            Spike(
+              position: pos,
+              size: size,
+              theme: theme,
+              grid: grid,
+              tileX: tile.x.toInt(),
+              tileY: tile.y.toInt(),
+            ),
+          );
           break;
       }
     }
@@ -98,8 +115,10 @@ class LevelManager {
 
     // --- Pickups ---
     for (final pickup in validatedData.pickups) {
-      final key = '${validatedData.levelId}_pickup_${pickup.x.round()}_${pickup.y.round()}';
-      if (game.removedEntitiesKeys.contains(key) || game.collectedDiamondsKeys.contains(key)) {
+      final key =
+          '${validatedData.levelId}_pickup_${pickup.x.round()}_${pickup.y.round()}';
+      if (game.removedEntitiesKeys.contains(key) ||
+          game.collectedDiamondsKeys.contains(key)) {
         continue; // Already collected, do not respawn!
       }
       final pos = Vector2(pickup.x * tileSize, pickup.y * tileSize);
@@ -115,38 +134,55 @@ class LevelManager {
     }
 
     // --- Lost Will Spawn ---
-    if (validatedData.levelId == game.playerState.lostWillLevelId && game.playerState.lostWillpower > 0) {
-      if (game.playerState.lostWillX != null && game.playerState.lostWillY != null) {
-        components.add(LostWillPickup(
-          position: Vector2(game.playerState.lostWillX!, game.playerState.lostWillY!),
-          willpowerAmount: game.playerState.lostWillpower,
-        ));
+    if (validatedData.levelId == game.playerState.lostWillLevelId &&
+        game.playerState.lostWillpower > 0) {
+      if (game.playerState.lostWillX != null &&
+          game.playerState.lostWillY != null) {
+        components.add(
+          LostWillPickup(
+            position: Vector2(
+              game.playerState.lostWillX!,
+              game.playerState.lostWillY!,
+            ),
+            willpowerAmount: game.playerState.lostWillpower,
+          ),
+        );
       }
     }
 
     // --- Dynamic Guardian & Portal Spawning ---
     if (validatedData.levelId == -1) {
       // Serene Guardian Realm: Spawn return portal at entrance and Guardian in the center
-      components.add(GuardianPortal(
-        position: Vector2(2 * tileSize, 7.5 * tileSize),
-        isReturn: true,
-      ));
-      components.add(Guardian(
-        position: Vector2(7 * tileSize, 7.0 * tileSize),
-      ));
+      components.add(
+        GuardianPortal(
+          position: Vector2(2 * tileSize, 7.5 * tileSize),
+          isReturn: true,
+        ),
+      );
+      components.add(Guardian(position: Vector2(7 * tileSize, 7.0 * tileSize)));
     } else {
       // Normal Level: Spawn entrance portal close to spawn point
-      components.add(GuardianPortal(
-        position: Vector2((validatedData.spawn.x + 2) * tileSize, (validatedData.spawn.y - 0.5) * tileSize),
-        isReturn: false,
-      ));
+      components.add(
+        GuardianPortal(
+          position: Vector2(
+            (validatedData.spawn.x + 2) * tileSize,
+            (validatedData.spawn.y - 0.5) * tileSize,
+          ),
+          isReturn: false,
+        ),
+      );
     }
 
     // --- Exit portal ---
     if (validatedData.levelId != -1) {
-      components.add(ExitPortal(
-        position: Vector2(validatedData.exit.x * tileSize, validatedData.exit.y * tileSize),
-      ));
+      components.add(
+        ExitPortal(
+          position: Vector2(
+            validatedData.exit.x * tileSize,
+            validatedData.exit.y * tileSize,
+          ),
+        ),
+      );
     }
 
     return components;
@@ -186,7 +222,7 @@ class LevelManager {
           TileData(type: 'platform', x: 50, y: 16, w: 8, h: 1),
 
           // Spikes on the ground
-          TileData(type: 'spike', x: 38, y: 18, w: 2, h: 1),
+          TileData(type: 'spike', x: 46, y: 16, w: 2, h: 1),
 
           // Wall
           TileData(type: 'block', x: 46, y: 15, w: 1, h: 4),
@@ -196,7 +232,7 @@ class LevelManager {
         ],
         enemies: [
           //EnemyData(x: 10, y: 18, type: 'architect', patrolRange: 50),
-          EnemyData(x: 11, y: 14, type: 'skeleton', patrolRange: 2),
+          EnemyData(x: 11, y: 14, type: 'nightborne', patrolRange: 2),
           EnemyData(x: 24, y: 18, type: 'bringer', patrolRange: 3),
           EnemyData(x: 35, y: 18, type: 'goblin', patrolRange: 3),
           EnemyData(x: 44, y: 13, type: 'archer', patrolRange: 2),
@@ -220,9 +256,20 @@ class LevelManager {
         exit: (x: 25, y: 4),
         tiles: [
           // Ground floor with lava pit underneath
-          TileData(type: 'block', x: 0, y: 38, w: 30, h: 2),  // Solid ground base
-          TileData(type: 'lava', x: 6, y: 37, w: 8, h: 1),     // Lava gap in ground (on top of base)
-
+          TileData(
+            type: 'block',
+            x: 0,
+            y: 38,
+            w: 30,
+            h: 2,
+          ), // Solid ground base
+          TileData(
+            type: 'lava',
+            x: 6,
+            y: 37,
+            w: 8,
+            h: 1,
+          ), // Lava gap in ground (on top of base)
           // === ASCENDING PLATFORMS (zigzag, max 3 tiles up, max 5 tiles across) ===
           // Tier 1: Right
           TileData(type: 'platform', x: 7, y: 35, w: 4, h: 1),
@@ -247,8 +294,7 @@ class LevelManager {
           // Tier 6: Final approach to exit
           TileData(type: 'platform', x: 20, y: 10, w: 4, h: 1),
           TileData(type: 'platform', x: 14, y: 7, w: 4, h: 1),
-          TileData(type: 'block', x: 22, y: 5, w: 6, h: 1),  // Exit platform
-
+          TileData(type: 'block', x: 22, y: 5, w: 6, h: 1), // Exit platform
           // Small wall obstacle mid-level (only 3 tiles tall, jumpable)
           TileData(type: 'block', x: 11, y: 24, w: 1, h: 3),
 
@@ -257,15 +303,20 @@ class LevelManager {
           TileData(type: 'spike', x: 15, y: 17, w: 1, h: 1),
         ],
         enemies: [
-          EnemyData(x: 16, y: 32, type: 'basic', patrolRange: 2),
-          EnemyData(x: 15, y: 27, type: 'basic', patrolRange: 2),
-          EnemyData(x: 14, y: 12, type: 'fast', patrolRange: 2),
+          EnemyData(x: 16, y: 32, type: 'nightborne', patrolRange: 2),
+          EnemyData(x: 15, y: 27, type: 'goblin', patrolRange: 2),
+          EnemyData(x: 14, y: 50, type: 'skeleton', patrolRange: 2),
+          EnemyData(x: 17, y: 40, type: 'bringer', patrolRange: 2),
+          EnemyData(x: 12, y: 67, type: 'bringer', patrolRange: 2),
+          EnemyData(x: 13, y: 70, type: 'archer', patrolRange: 2),
+          EnemyData(x: 22, y: 50, type: 'wizard', patrolRange: 2),
         ],
         pickups: [
           PickupData(type: 'health', x: 22, y: 20),
           PickupData(type: 'diamond', x: 6, y: 15),
         ],
-        architectDialogue: "You survived the pit. Let's see how you handle heights.",
+        architectDialogue:
+            "You survived the pit. Let's see how you handle heights.",
       );
     } else if (levelId == 3) {
       // LEVEL 3: Lava Caverns
@@ -281,34 +332,34 @@ class LevelManager {
           TileData(type: 'block', x: 0, y: 7, w: 8, h: 1),
           // Giant lava lake at the bottom
           TileData(type: 'lava', x: 0, y: 22, w: 80, h: 2),
-          
+
           // Stepping stones dropping into the cavern
           TileData(type: 'block', x: 10, y: 10, w: 3, h: 1),
           TileData(type: 'block', x: 16, y: 14, w: 4, h: 1),
           TileData(type: 'block', x: 23, y: 18, w: 5, h: 1),
-          
+
           // Lava pillars to hop across
           TileData(type: 'block', x: 32, y: 21, w: 2, h: 1),
           TileData(type: 'block', x: 38, y: 20, w: 2, h: 1),
           TileData(type: 'block', x: 44, y: 21, w: 3, h: 1),
           TileData(type: 'block', x: 52, y: 18, w: 4, h: 1),
-          
+
           // Path back up
           TileData(type: 'block', x: 59, y: 15, w: 4, h: 1),
           TileData(type: 'block', x: 66, y: 11, w: 3, h: 1),
           TileData(type: 'block', x: 73, y: 7, w: 7, h: 1),
-          
+
           // A ceiling to make jumping tight in some spots
           TileData(type: 'block', x: 15, y: 0, w: 50, h: 5),
-          
+
           // Spikes
           TileData(type: 'spike', x: 25, y: 17, w: 2, h: 1),
           TileData(type: 'spike', x: 53, y: 17, w: 2, h: 1),
         ],
         enemies: [
-          EnemyData(x: 24, y: 17, type: 'heavy', patrolRange: 2),
-          EnemyData(x: 44, y: 20, type: 'basic', patrolRange: 0),
-          EnemyData(x: 60, y: 14, type: 'fast', patrolRange: 2),
+          EnemyData(x: 24, y: 17, type: 'nightborne', patrolRange: 0),
+          EnemyData(x: 44, y: 20, type: 'skeleton', patrolRange: 0),
+          EnemyData(x: 60, y: 14, type: 'archer', patrolRange: 0),
         ],
         pickups: [
           PickupData(type: 'health', x: 45, y: 19),
@@ -328,22 +379,22 @@ class LevelManager {
         tiles: [
           // Flat floor, but full of enemies and spikes
           TileData(type: 'block', x: 0, y: 22, w: 50, h: 1),
-          
+
           // Spike pits
           TileData(type: 'spike', x: 8, y: 21, w: 4, h: 1),
           TileData(type: 'spike', x: 22, y: 21, w: 5, h: 1),
           TileData(type: 'spike', x: 35, y: 21, w: 3, h: 1),
-          
+
           // Floating platforms above spikes to jump on
           TileData(type: 'platform', x: 9, y: 17, w: 2, h: 1),
           TileData(type: 'platform', x: 23, y: 16, w: 3, h: 1),
           TileData(type: 'platform', x: 36, y: 17, w: 1, h: 1),
-          
+
           // Upper path (harder, but has ore)
           TileData(type: 'platform', x: 12, y: 12, w: 4, h: 1),
           TileData(type: 'platform', x: 20, y: 9, w: 4, h: 1),
           TileData(type: 'platform', x: 30, y: 11, w: 3, h: 1),
-          
+
           // Obstacles on upper path
           TileData(type: 'spike', x: 21, y: 8, w: 1, h: 1),
         ],
@@ -351,7 +402,7 @@ class LevelManager {
           EnemyData(x: 14, y: 21, type: 'basic', patrolRange: 3),
           EnemyData(x: 29, y: 21, type: 'heavy', patrolRange: 3),
           EnemyData(x: 39, y: 21, type: 'fast', patrolRange: 2),
-          
+
           // Enemies on upper platforms
           EnemyData(x: 13, y: 11, type: 'fast', patrolRange: 1),
           EnemyData(x: 31, y: 10, type: 'fast', patrolRange: 1),
@@ -387,7 +438,8 @@ class LevelManager {
       ],
       enemies: [],
       pickups: [],
-      architectDialogue: "You have stepped into the Guardian's sanctuary. Peace and strength await.",
+      architectDialogue:
+          "You have stepped into the Guardian's sanctuary. Peace and strength await.",
     );
   }
 
@@ -401,56 +453,40 @@ class LevelManager {
     switch (type) {
       case 'skeleton':
       case 'basic': // Legacy alias
-        enemy = SkeletonEnemy(
-          position: pos,
-        );
+        enemy = SkeletonEnemy(position: pos);
         break;
 
       case 'goblin':
       case 'fast': // Legacy alias
-        enemy = GoblinEnemy(
-          position: pos,
-        );
+        enemy = GoblinEnemy(position: pos);
         break;
 
       case 'nightborne':
       case 'nightborn':
       case 'heavy': // Legacy alias
-        enemy = NightborneEnemy(
-          position: pos,
-        );
+        enemy = NightborneEnemy(position: pos);
         break;
 
       case 'bringer':
-        enemy = BringerEnemy(
-          position: pos,
-        );
+        enemy = BringerEnemy(position: pos);
         break;
 
       case 'archer':
       case 'arcane_archer':
-        enemy = ArcaneArcherEnemy(
-          position: pos,
-        );
+        enemy = ArcaneArcherEnemy(position: pos);
         break;
 
       case 'wizard':
-        enemy = WizardEnemy(
-          position: pos,
-        );
+        enemy = WizardEnemy(position: pos);
         break;
 
       case 'architect':
-        enemy = ArchitectBoss(
-          position: pos,
-        );
+        enemy = ArchitectBoss(position: pos);
         break;
 
       default:
         // Absolute fallback: skeleton
-        enemy = SkeletonEnemy(
-          position: pos,
-        );
+        enemy = SkeletonEnemy(position: pos);
         break;
     }
 
