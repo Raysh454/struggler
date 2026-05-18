@@ -13,7 +13,7 @@ import 'player.dart';
 // ---------------------------------------------------------------------------
 abstract class Projectile extends PositionComponent
     with CollisionCallbacks, HasGameReference<StruggleGame> {
-  final double damage;
+  double damage;
   final double maxRange;
   double _distanceTravelled = 0;
   bool _hasHit = false;
@@ -22,20 +22,28 @@ abstract class Projectile extends PositionComponent
   Projectile({
     required Vector2 position,
     required Vector2 size,
-    required double damage,
+    required this.damage,
     required this.maxRange,
-  }) : damage = damage * GameConfig.enemyDamageMultiplier,
-       super(position: position, size: size);
+  }) : super(position: position, size: size);
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
     add(RectangleHitbox());
+
+    // Apply GameConfig multiplier and dynamic Level custom multiplier!
+    damage = damage * GameConfig.enemyDamageMultiplier;
+    final levelData = game.cachedActiveLevel;
+    if (levelData != null) {
+      final customDamageMult = levelData.enemyDamageMultiplier ?? 1.0;
+      damage *= customDamageMult;
+    }
   }
 
   @override
   void update(double dt) {
     super.update(dt);
+    if (game.isCutscenePlaying) return;
     if (_hasHit) return;
     final delta = moveStep(dt);
     position += delta;
@@ -184,12 +192,6 @@ class OrbProjectile extends Projectile {
     }
 
     final toPlayer = (player.position + player.size / 2) - (position + size / 2);
-    
-    // Destroy if it passed the player (moving away while close)
-    if (toPlayer.length < 150 && _currentVelocity!.dot(toPlayer) < -100) {
-      removeFromParent();
-      return Vector2.zero();
-    }
 
     final targetAngle = atan2(toPlayer.y, toPlayer.x);
     final currentAngle = atan2(_currentVelocity!.y, _currentVelocity!.x);

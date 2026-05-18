@@ -144,11 +144,9 @@ class PlayerState {
     willpower = 0;
   }
 
-  /// Reset health/resolve/stamina and restore manual heals for a new level.
+  /// Reset health/stamina and restore manual heals for a new level. (Resolve is kept!)
   void resetForNewLevel() {
     health = maxHealth;
-    resolve = 0;
-    isIndomitable = false;
     stamina = maxStamina;
     catHealsRemaining = catHealsMax;
   }

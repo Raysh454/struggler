@@ -8,7 +8,7 @@ class GameConfig {
   static const double tileSize = 32.0;
   static const double blockOverlap = 1.0;
   static const int pillarMaxDepth = 6;
-  static const double lavaBleed = 1.0;
+  static const double lavaBleed = 2.0;
 
   // --- Player Starting Defaults ---
   static const double playerMaxHealthDefault = 100.0;
@@ -126,21 +126,21 @@ class GameConfig {
   static const double enemyHealthArchitect = 1500;
 
   // --- Enemy Willpower (Will) Drop Configs ---
-  static const int enemyWillSkeleton = 15;
-  static const int enemyWillGoblin = 5;
-  static const int enemyWillNightborne = 25;
-  static const int enemyWillBringer = 50;
-  static const int enemyWillArcher = 8;
-  static const int enemyWillWizard = 10;
-  static const int enemyWillArchitect = 100;
+  static const int enemyWillSkeleton = 30;
+  static const int enemyWillGoblin = 20;
+  static const int enemyWillNightborne = 50;
+  static const int enemyWillBringer = 80;
+  static const int enemyWillArcher = 25;
+  static const int enemyWillWizard = 25;
+  static const int enemyWillArchitect = 1500;
 
   // --- Enemy Resolve Drop Configs ---
-  static const double enemyResolveSkeleton = 15.0;
-  static const double enemyResolveGoblin = 10.0;
-  static const double enemyResolveNightborne = 30.0;
-  static const double enemyResolveBringer = 40.0;
-  static const double enemyResolveArcher = 15.0;
-  static const double enemyResolveWizard = 15.0;
+  static const double enemyResolveSkeleton = 25.0;
+  static const double enemyResolveGoblin = 20.0;
+  static const double enemyResolveNightborne = 40.0;
+  static const double enemyResolveBringer = 50.0;
+  static const double enemyResolveArcher = 25.0;
+  static const double enemyResolveWizard = 25.0;
   static const double enemyResolveArchitect = 100.0;
 
   // --- Enemy Damage Configs (Contact or base melee) ---
@@ -256,6 +256,8 @@ class GameConfig {
 
   // --- Hazard Settings ---
   static const double spikeDamageDefault = 20.0;
+  static const double spikeOffset =
+      2.0; // Positive values move spikes outwards, negative moves inwards.
   static const double lavaDamageDefault = 15.0;
 
   // --- Pickup Settings ---
@@ -298,4 +300,22 @@ class GameConfig {
   static const int validatorSpawnSafeRadius = 3;
   static const int validatorExitSafeRadius = 2;
   static const int validatorMaxRepairIterations = 3;
+
+  // --- AI / Level Generation ---
+  /// Set to true to generate a new AI level on death. False = replay same cached level.
+  static const bool generateNewLevelOnDeath = false;
+
+  // --- Boss Fight Dialogues ---
+  static const List<String> architectPhaseDialogues = [
+    "Is this your best effort?",
+    "I will reshape this world to break you.",
+    "Your resolve is an illusion.",
+    "No more games. Die.",
+    "Impossible...",
+  ];
+
+  static const String architectDeathKillDialogue =
+      "So be it... back to the void.";
+  static const String architectDeathSpareDialogue =
+      "You spare the hand that strikes you? Fool.";
 }

@@ -42,74 +42,166 @@ class Lava extends PositionComponent with CollisionCallbacks, HasGameReference<S
     _glowTimer += dt * 3;
   }
 
+  Sprite _pickPillarSprite(int gx, int gy, bool isLastRow, Random random) {
+    if (theme.pillarSprites.isEmpty) return theme.lavaFillSprite;
+    
+    final isLeftEdge = !grid.isSolid(gx - 1, gy) && !grid.isLava(gx - 1, gy);
+    final isRightEdge = !grid.isSolid(gx + 1, gy) && !grid.isLava(gx + 1, gy);
+
+    if (isLastRow) {
+      if (isLeftEdge && theme.bottomLeftSprites.isNotEmpty) {
+        return theme.bottomLeftSprites[random.nextInt(theme.bottomLeftSprites.length)];
+      }
+      if (isRightEdge && theme.bottomRightSprites.isNotEmpty) {
+        return theme.bottomRightSprites[random.nextInt(theme.bottomRightSprites.length)];
+      }
+      if (theme.bottomSprites.isNotEmpty) {
+        return theme.bottomSprites[random.nextInt(theme.bottomSprites.length)];
+      }
+    } else {
+      if (isLeftEdge && theme.leftWallSprites.isNotEmpty) {
+        return theme.leftWallSprites[random.nextInt(theme.leftWallSprites.length)];
+      }
+      if (isRightEdge && theme.rightWallSprites.isNotEmpty) {
+        return theme.rightWallSprites[random.nextInt(theme.rightWallSprites.length)];
+      }
+    }
+    return theme.pillarSprites[random.nextInt(theme.pillarSprites.length)];
+  }
+
   @override
   void render(Canvas canvas) {
     const double destTileSize = GameConfig.tileSize;
-    
-    // Large bleed to completely tuck behind the adjacent platform cliff walls.
-    // Because Lava is rendered at priority -5, this safely stays behind the solid 
-    // rocks, filling any transparent gaps perfectly.
     const double bleed = GameConfig.lavaBleed; 
     
-    // Only render lava infinitely downwards if there is NO block beneath it
     final int startGx = (position.x / destTileSize).round();
     final int wTiles = (size.x / destTileSize).round();
     final int bottomGy = ((position.y + size.y) / destTileSize).round();
     
-    bool hasSupport = false;
-    for (int i = 0; i < wTiles; i++) {
-      if (grid.isSolid(startGx + i, bottomGy)) {
-        hasSupport = true;
-        break;
+    // Determine target depth for block pillars under support columns
+    final random = Random(startGx ^ bottomGy);
+    final int targetPillarDepth = random.nextInt(3) + 4; // 4 to 6 tiles
+
+    final darkenPaint = Paint()
+      ..colorFilter = const ColorFilter.mode(
+        Color(0x50000000), // 40% shadow like block pillars
+        BlendMode.srcATop,
+      );
+
+    // Viewport-culling max depth for columns with void underneath
+    double maxLavaDepth = size.y;
+    final double cameraY = game.camera.viewfinder.position.y;
+    final double zoom = game.camera.viewfinder.zoom;
+    final double halfScreenHeight = (game.canvasSize.y / 2) / zoom;
+    final double visibleBottom = cameraY + halfScreenHeight;
+    final double maxVisibleY = visibleBottom - position.y + 64.0;
+    maxLavaDepth = min(2000.0, max(size.y, maxVisibleY));
+
+    // First draw background containment and underneath pillars!
+    for (int col = -1; col <= wTiles; col++) {
+      final double x = col * destTileSize;
+      final int gx = startGx + col;
+      
+      // Determine if there is void underneath this column
+      bool columnHasVoid = true;
+      int supportGy = grid.height;
+      for (int gy = bottomGy; gy < grid.height; gy++) {
+        if (grid.isSolid(gx, gy)) {
+          columnHasVoid = false;
+          supportGy = gy;
+          break;
+        }
+      }
+
+      if (col == -1 || col == wTiles) {
+        // Containment pillars: draw to maxLavaDepth if void, or to support block/target depth if not void
+        final double colLimitY = columnHasVoid 
+            ? maxLavaDepth 
+            : min((supportGy - (position.y / destTileSize).round()) * destTileSize, targetPillarDepth * destTileSize);
+            
+        for (double y = size.y; y < colLimitY; y += destTileSize) {
+          final int currentGy = ((position.y + y) / destTileSize).round();
+          if (grid.isSolid(gx, currentGy)) break;
+          
+          final isLastRow = (y + destTileSize >= colLimitY);
+          final sprite = _pickPillarSprite(gx, currentGy, isLastRow, random);
+          
+          sprite.render(
+            canvas,
+            position: Vector2(x, y),
+            size: Vector2(destTileSize + 1.0, destTileSize + 1.0),
+            overridePaint: darkenPaint,
+          );
+        }
+      } else {
+        // Underneath columns without void: draw block pillars starting below the lava top/fill block
+        if (!columnHasVoid) {
+          final double colLimitY = min((supportGy - (position.y / destTileSize).round()) * destTileSize, targetPillarDepth * destTileSize);
+          
+          for (double y = size.y; y < colLimitY; y += destTileSize) {
+            final int currentGy = ((position.y + y) / destTileSize).round();
+            if (grid.isSolid(gx, currentGy)) break;
+            
+            final isLastRow = (y + destTileSize >= colLimitY);
+            final sprite = _pickPillarSprite(gx, currentGy, isLastRow, random);
+            
+            sprite.render(
+              canvas,
+              position: Vector2(x, y),
+              size: Vector2(destTileSize + 1.0, destTileSize + 1.0),
+              overridePaint: darkenPaint,
+            );
+          }
+        }
       }
     }
 
-    // Viewport-culling optimization:
-    // If there is no support block beneath the lava pool, we normally render down to 2000px.
-    // To maintain 60+ FPS, we query the camera to render only what is visible inside the screen height.
-    double maxDepth = size.y;
-    if (!hasSupport) {
-      final double cameraY = game.camera.viewfinder.position.y;
-      final double zoom = game.camera.viewfinder.zoom;
-      final double halfScreenHeight = (game.canvasSize.y / 2) / zoom;
-      final double visibleBottom = cameraY + halfScreenHeight;
-      // Add a 64px safety padding so players never see tile loading seams during vertical movement
-      final double maxVisibleY = visibleBottom - position.y + 64.0;
-      maxDepth = min(2000.0, max(size.y, maxVisibleY));
-    }
-    final double visualDepth = maxDepth;
+    // Now draw the lava itself!
+    for (int col = 0; col < wTiles; col++) {
+      final double x = col * destTileSize;
+      final int gx = startGx + col;
 
-    for (double y = 0; y < visualDepth; y += destTileSize) {
-      // Determine the sprite for this row. Only the top row (y == 0) is animated.
-      // We do this outside the inner horizontal loop to save CPU cycles.
-      final sprite = y == 0 
-          ? theme.lavaWaveSprites[((_glowTimer * 2.0).floor() % theme.lavaWaveSprites.length)]
-          : theme.lavaFillSprite;
-
-      for (double x = -bleed; x < size.x + bleed; x += destTileSize) {
-        // We calculate draw width for the right-most tile considering the bleed
-        double drawWidth = destTileSize;
-        if (x + destTileSize > size.x + bleed) {
-          drawWidth = (size.x + bleed) - x;
+      // Check void
+      bool columnHasVoid = true;
+      for (int gy = bottomGy; gy < grid.height; gy++) {
+        if (grid.isSolid(gx, gy)) {
+          columnHasVoid = false;
+          break;
         }
-        
-        final double drawHeight = min(destTileSize, visualDepth - y);
+      }
 
-        // Sub-pixel seam overlap
+      final double colLavaDepth = columnHasVoid ? maxLavaDepth : size.y;
+
+      for (double y = 0; y < colLavaDepth; y += destTileSize) {
+        final sprite = y == 0 
+            ? theme.lavaWaveSprites[((_glowTimer * 2.0).floor() % theme.lavaWaveSprites.length)]
+            : theme.lavaFillSprite;
+
+        // Apply a small bleed overlap only to the outer left/right bounds if they are not bordered by containment pillars
+        double drawX = x;
+        double drawWidth = destTileSize;
+        if (col == 0) {
+          drawX = x - bleed;
+          drawWidth = destTileSize + bleed;
+        } else if (col == wTiles - 1) {
+          drawWidth = destTileSize + bleed;
+        }
+
+        final double drawHeight = min(destTileSize, colLavaDepth - y);
         final renderSize = Vector2(drawWidth + 1.0, drawHeight + 1.0);
 
         if (drawWidth == destTileSize && drawHeight == destTileSize) {
           sprite.render(
             canvas,
-            position: Vector2(x, y),
+            position: Vector2(drawX, y),
             size: renderSize,
           );
         } else {
           canvas.save();
-          canvas.clipRect(Rect.fromLTWH(x, y, drawWidth, drawHeight));
+          canvas.clipRect(Rect.fromLTWH(drawX, y, drawWidth, drawHeight));
           sprite.render(
             canvas,
-            position: Vector2(x, y),
+            position: Vector2(drawX, y),
             size: renderSize,
           );
           canvas.restore();

@@ -13,17 +13,27 @@ class ExplosionEffect extends PositionComponent
   double _elapsed = 0;
   bool _hasDealtDamage = false;
   final double splashRadius;
-  final double damage;
+  double damage;
 
   ExplosionEffect({
     required Vector2 center,
     this.splashRadius = GameConfig.nightbornExplosionRadius,
-    double damage = GameConfig.nightbornExplosionDamage,
-  }) : damage = damage * GameConfig.enemyDamageMultiplier,
-       super(
+    this.damage = GameConfig.nightbornExplosionDamage,
+  }) : super(
          position: center - Vector2.all(splashRadius),
          size: Vector2.all(splashRadius * 2),
        );
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    damage = damage * GameConfig.enemyDamageMultiplier;
+    final levelData = game.cachedActiveLevel;
+    if (levelData != null) {
+      final customDamageMult = levelData.enemyDamageMultiplier ?? 1.0;
+      damage *= customDamageMult;
+    }
+  }
 
   @override
   void update(double dt) {

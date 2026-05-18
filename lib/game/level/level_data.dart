@@ -9,16 +9,16 @@ class TileData {
   final double h;
 
   TileData({
-    required this.type,
+    required String type,
     required this.x,
     required this.y,
     this.w = 1,
     this.h = 1,
-  });
+  }) : type = type.toLowerCase();
 
   factory TileData.fromJson(Map<String, dynamic> json) {
     return TileData(
-      type: json['type'] as String,
+      type: (json['type'] as String).toLowerCase(),
       x: (json['x'] as num).toDouble(),
       y: (json['y'] as num).toDouble(),
       w: (json['w'] as num?)?.toDouble() ?? 1,
@@ -51,9 +51,9 @@ class EnemyData {
     this.health = 50,
     this.damage = 10,
     this.speed = 1.0,
-    this.type = 'basic',
+    String type = 'basic',
     this.patrolRange = 3.0,
-  });
+  }) : type = type.toLowerCase();
 
   factory EnemyData.fromJson(Map<String, dynamic> json) {
     return EnemyData(
@@ -62,7 +62,7 @@ class EnemyData {
       health: (json['health'] as num?)?.toDouble() ?? 50,
       damage: (json['damage'] as num?)?.toDouble() ?? 10,
       speed: (json['speed'] as num?)?.toDouble() ?? 1.0,
-      type: json['type'] as String? ?? 'basic',
+      type: (json['type'] as String? ?? 'basic').toLowerCase(),
       patrolRange: (json['patrol_range'] as num?)?.toDouble() ?? 3.0,
     );
   }
@@ -85,14 +85,14 @@ class PickupData {
   final double y;
 
   PickupData({
-    required this.type,
+    required String type,
     required this.x,
     required this.y,
-  });
+  }) : type = type.toLowerCase();
 
   factory PickupData.fromJson(Map<String, dynamic> json) {
     return PickupData(
-      type: json['type'] as String,
+      type: (json['type'] as String).toLowerCase(),
       x: (json['x'] as num).toDouble(),
       y: (json['y'] as num).toDouble(),
     );
@@ -106,6 +106,32 @@ class PickupData {
 }
 
 /// The complete level blueprint — this is what The Architect AI generates.
+class NarrativeEvent {
+  final String type;
+  final String dialogue;
+  final String condition;
+
+  NarrativeEvent({
+    required this.type,
+    required this.dialogue,
+    required this.condition,
+  });
+
+  factory NarrativeEvent.fromJson(Map<String, dynamic> json) {
+    return NarrativeEvent(
+      type: json['type'] as String? ?? 'ARCHITECT_TAUNT',
+      dialogue: json['dialogue'] as String? ?? '',
+      condition: json['condition'] as String? ?? 'LEVEL_START',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'type': type,
+        'dialogue': dialogue,
+        'condition': condition,
+      };
+}
+
 class LevelData {
   final int levelId;
   final double difficulty; // 0.0 to 1.0
@@ -117,6 +143,9 @@ class LevelData {
   final List<EnemyData> enemies;
   final List<PickupData> pickups;
   final String? architectDialogue; // What the Architect says at level start
+  final List<NarrativeEvent> narrativeEvents;
+  final double? enemyDamageMultiplier;
+  final double? enemyHealthMultiplier;
 
   LevelData({
     required this.levelId,
@@ -129,6 +158,9 @@ class LevelData {
     this.enemies = const [],
     this.pickups = const [],
     this.architectDialogue,
+    this.narrativeEvents = const [],
+    this.enemyDamageMultiplier,
+    this.enemyHealthMultiplier,
   });
 
   factory LevelData.fromJson(Map<String, dynamic> json) {
@@ -160,6 +192,12 @@ class LevelData {
               .toList() ??
           [],
       architectDialogue: json['architect_dialogue'] as String?,
+      narrativeEvents: (json['narrativeEvents'] as List<dynamic>?)
+              ?.map((e) => NarrativeEvent.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      enemyDamageMultiplier: (json['enemyDamageMultiplier'] as num?)?.toDouble(),
+      enemyHealthMultiplier: (json['enemyHealthMultiplier'] as num?)?.toDouble(),
     );
   }
 
@@ -179,5 +217,8 @@ class LevelData {
         'enemies': enemies.map((e) => e.toJson()).toList(),
         'pickups': pickups.map((p) => p.toJson()).toList(),
         'architect_dialogue': architectDialogue,
+        'narrativeEvents': narrativeEvents.map((e) => e.toJson()).toList(),
+        'enemyDamageMultiplier': enemyDamageMultiplier,
+        'enemyHealthMultiplier': enemyHealthMultiplier,
       };
 }

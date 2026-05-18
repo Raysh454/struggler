@@ -50,13 +50,11 @@ class _StruggleAppState extends State<StruggleApp> {
               overlayBuilderMap: {
                 'MainMenu': (context, StruggleGame game) => MainMenuOverlay(game: game),
                 'GuardianUpgrades': (context, StruggleGame game) => GuardianUpgradesOverlay(game: game),
-                'ArchitectIntro': (context, StruggleGame game) => ArchitectIntroOverlay(
-                  game: game,
-                  dialogue: game.currentArchitectDialogue ?? '...',
-                ),
                 'ArchitectTopRightDialogue': (context, StruggleGame game) => TopRightDialogueOverlay(
                   dialogue: game.currentArchitectDialogue ?? '...',
+                  game: game,
                 ),
+                'BossChoiceOverlay': (context, StruggleGame game) => BossChoiceOverlay(game: game),
               },
             ),
 

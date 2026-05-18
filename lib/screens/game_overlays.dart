@@ -385,7 +385,7 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
                   _UpgradeItem(
                     title: "Hope's Sanctuary",
                     subtitle:
-                        'Increases Hope\'s capacity to heal (+1) and damage (+10)',
+                        'Increases Hope\'s capacity to heal (+1) and her damage (+10)',
                     currentValue:
                         '${state.catHealsMax} Heals / ${(GameConfig.catAttackDamage + (state.catHealUpgradeLevel - 1) * GameConfig.catAttackDamagePerLevel).round()} Dmg',
                     level: 'Lvl ${state.catHealUpgradeLevel}',
@@ -606,124 +606,47 @@ class _UpgradeItem extends StatelessWidget {
 }
 
 /// The Architect Intro Overlay displayed at the start of an AI-generated level.
-class ArchitectIntroOverlay extends StatelessWidget {
-  final StruggleGame game;
-  final String dialogue;
-
-  const ArchitectIntroOverlay({required this.game, required this.dialogue, Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Center(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              width: 500,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFB71C1C), width: 2),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x66B71C1C), blurRadius: 20, spreadRadius: 2),
-                ],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFFB71C1C), width: 2),
-                      borderRadius: BorderRadius.circular(8),
-                      image: const DecorationImage(
-                        image: AssetImage('assets/images/characters/architect/dialogue.png'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'THE ARCHITECT',
-                          style: TextStyle(
-                            color: Color(0xFFFF5252),
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          dialogue,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontStyle: FontStyle.italic,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: GlassButton(
-                            label: 'CONTINUE',
-                            color: const Color(0xFFB71C1C),
-                            onTap: () {
-                              game.overlays.remove('ArchitectIntro');
-                              game.resumeEngine();
-                              game.showControlsNotifier.value = true;
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// The Top-Right HUD Dialogue box for dynamic in-game taunts.
 class TopRightDialogueOverlay extends StatefulWidget {
   final String dialogue;
+  final StruggleGame game;
 
-  const TopRightDialogueOverlay({required this.dialogue, Key? key}) : super(key: key);
+  const TopRightDialogueOverlay({
+    required this.dialogue,
+    required this.game,
+    Key? key,
+  }) : super(key: key);
 
   @override
-  State<TopRightDialogueOverlay> createState() => _TopRightDialogueOverlayState();
+  State<TopRightDialogueOverlay> createState() =>
+      _TopRightDialogueOverlayState();
 }
 
-class _TopRightDialogueOverlayState extends State<TopRightDialogueOverlay> with SingleTickerProviderStateMixin {
+class _TopRightDialogueOverlayState extends State<TopRightDialogueOverlay>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
-    
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+
     _controller.forward();
-    
+
     // Auto dismiss after 5 seconds
     Future.delayed(const Duration(seconds: 5), () {
       if (mounted) {
-        _controller.reverse();
+        _controller.reverse().then((_) {
+          widget.game.overlays.remove('ArchitectTopRightDialogue');
+        });
       }
     });
   }
@@ -749,7 +672,11 @@ class _TopRightDialogueOverlayState extends State<TopRightDialogueOverlay> with 
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: const Color(0xFFB71C1C), width: 1.5),
             boxShadow: const [
-              BoxShadow(color: Color(0x33B71C1C), blurRadius: 10, spreadRadius: 1),
+              BoxShadow(
+                color: Color(0x33B71C1C),
+                blurRadius: 10,
+                spreadRadius: 1,
+              ),
             ],
           ),
           child: Row(
@@ -761,7 +688,9 @@ class _TopRightDialogueOverlayState extends State<TopRightDialogueOverlay> with 
                   border: Border.all(color: const Color(0xFFB71C1C), width: 1),
                   borderRadius: BorderRadius.circular(4),
                   image: const DecorationImage(
-                    image: AssetImage('assets/images/characters/architect/dialogue.png'),
+                    image: AssetImage(
+                      'assets/images/characters/architect/dialogue.png',
+                    ),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -797,6 +726,138 @@ class _TopRightDialogueOverlayState extends State<TopRightDialogueOverlay> with 
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Overlay presented when The Architect is defeated.
+class BossChoiceOverlay extends StatefulWidget {
+  final StruggleGame game;
+
+  const BossChoiceOverlay({required this.game, Key? key}) : super(key: key);
+
+  @override
+  State<BossChoiceOverlay> createState() => _BossChoiceOverlayState();
+}
+
+class _BossChoiceOverlayState extends State<BossChoiceOverlay> {
+  bool _choiceMade = false;
+  bool _isKill = false;
+  bool _fadeToWhite = false;
+
+  void _handleChoice(bool isKill) {
+    setState(() {
+      _choiceMade = true;
+      _isKill = isKill;
+      if (isKill) {
+        _fadeToWhite = true;
+      }
+    });
+
+    Future.delayed(const Duration(seconds: 4), () {
+      if (!mounted) return;
+      if (isKill) {
+        // Return to main menu
+        widget.game.overlays.remove('BossChoiceOverlay');
+        widget.game.overlays.add('MainMenu');
+        // Optional: Reset game fully
+        widget.game.gameState.currentLevel = 1;
+        widget.game.playerState.resetForNewLevel();
+      } else {
+        // Return to main menu as well!
+        widget.game.overlays.remove('BossChoiceOverlay');
+        widget.game.overlays.add('MainMenu');
+        widget.game.gameState.currentLevel = 1;
+        widget.game.playerState.resetForNewLevel();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // The choice UI
+        if (!_choiceMade)
+          Container(
+            color: Colors.black.withOpacity(0.8),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'THE ARCHITECT FALLS',
+                    style: TextStyle(
+                      color: Color(0xFFFF2E63),
+                      fontSize: 36,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 4,
+                      shadows: [
+                        Shadow(color: Color(0xAAFF2E63), blurRadius: 16),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Will you end this world, or continue the struggle?',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GlassButton(
+                        label: 'THE SILENCE (KILL)',
+                        color: Colors.white,
+                        onTap: () => _handleChoice(true),
+                      ),
+                      const SizedBox(width: 32),
+                      GlassButton(
+                        label: 'ETERNAL STRUGGLE (SPARE)',
+                        color: const Color(0xFFFF2E63),
+                        onTap: () => _handleChoice(false),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // The fade-to-white or simple dialogue overlay
+        if (_choiceMade)
+          AnimatedContainer(
+            duration: const Duration(seconds: 2),
+            color: _fadeToWhite ? Colors.white : Colors.black.withOpacity(0.8),
+            curve: Curves.easeIn,
+            child: Center(
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(seconds: 2),
+                builder: (context, val, child) {
+                  return Opacity(
+                    opacity: val,
+                    child: Text(
+                      _isKill
+                          ? GameConfig.architectDeathKillDialogue
+                          : GameConfig.architectDeathSpareDialogue,
+                      style: TextStyle(
+                        color: _isKill ? Colors.black : const Color(0xFFFF2E63),
+                        fontSize: 24,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

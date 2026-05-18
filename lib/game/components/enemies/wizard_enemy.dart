@@ -138,6 +138,7 @@ class WizardEnemy extends RangedEnemy {
   void update(double dt) {
     super.update(dt);
     if (!_spriteLoaded || isDead) return;
+    if (game.isCutscenePlaying) return;
 
     final ticker = _animGroup!.animationTickers?[_WAnim.attack];
     if (_current == _WAnim.attack && ticker != null) {

@@ -243,7 +243,7 @@ void main() {
         final success = state.upgradeSword();
         expect(success, true);
         expect(state.swordUpgradeLevel, 2);
-        expect(state.swordDamage, 30.0); // 25 + 5
+        expect(state.swordDamage, 35.0); // 25 + 10
         expect(state.diamondsCollected, 1);
         expect(state.willpower, 50); // 150 - 100
       });

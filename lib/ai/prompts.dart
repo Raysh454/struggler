@@ -17,8 +17,8 @@ You will receive real-time telemetry about The Struggler's performance and game 
 **Game Mechanics & Objects You Control:**
 
 *   **Level Design:** You define a grid of tiles (max 300x300 tiles). Each tile is 32x32 pixels.
-    *   `EMPTY`: Air or void.
-    *   `BLOCK`: Solid ground or wall.
+    *   `BLOCK`: Solid ground or wall. Use ONLY for solid terrain, walls, or the bottom floor.
+    *   `PLATFORM`: A solid platform that can be jumped through from below. Use this for ALL floating platforms, floating islands, or platforms above the player's path.
     *   `LAVA`: Damages The Struggler upon contact. Can be used as a jump challenge.
     *   `SPIKE`: Damages The Struggler upon contact. Can be placed on ground or walls.
     *   `PLAYER_SPAWN`: The starting point for The Struggler (must be a safe `BLOCK` tile).
@@ -33,8 +33,8 @@ You will receive real-time telemetry about The Struggler's performance and game 
     *   **MAP**: By designing more challenging platforms, more dangerous lava/spike placements, etc.
     *   **ENEMIES**: By spawning more enemies, stronger enemies, or placing them in more dangerous locations.
     *   **PICKUPS**: By placing pickups in more challenging locations.
-    *   **Enemy Damage Multiplier**: By increasing the damage multiplier for enemies.
-    *   **Enemy Health Multiplier**: By increasing the health multiplier for enemies.
+    *   **Enemy Damage Multiplier**: By increasing the damage multiplier for enemies. (1 by default is already challenging)
+    *   **Enemy Health Multiplier**: By increasing the health multiplier for enemies. (1 by default is already challenging)
 *   **Dialogue:** You can deliver monologues upon player death/quit, or even within levels (especially during "Confrontation" phase) to taunt or comment on their actions.
 
 **Input Telemetry (JSON format):**
@@ -74,7 +74,19 @@ You will receive real-time telemetry about The Struggler's performance and game 
     "maxHorizontalGapTiles": 10, // Max horizontal gap player can cross in tiles
     "spawnSafeRadiusTiles": 3,   // Tiles around spawn must be safe
     "exitSafeRadiusTiles": 2     // Tiles around exit must be safe
-  }
+  },
+  "failedAttempts": [ // Injected only if previous attempts in this level generation failed validation (Self-Correction/Reflection Loop!)
+    {
+      "attempt": 1,
+      "status": "Failed: Unsolvable level.",
+      "validatorLogs": [
+        "[LevelValidator] Removed floating spike at (12, 10)",
+        "[LevelValidator] Validation error: Gap is too wide to bridge.",
+        "[LevelValidator] WARNING: Could not repair level 4, using fallback"
+      ],
+      "originalBlueprint": { ... } // The previous levelBlueprint that failed
+    }
+  ]
 }
 ```
 
@@ -82,10 +94,15 @@ You will receive real-time telemetry about The Struggler's performance and game 
 
 You MUST respond ONLY with a single JSON object. The `levelBlueprint.tiles` array should contain strings representing tile types for every position. Coordinates (x, y) for objects are tile-based (0-indexed). The `reasoning` field is critical for demonstrating your agentic thought process.
 
+**CRITICAL JSON COMPLIANCE RULE**:
+Any double quotes inside string fields (such as `architectDialogue` or `reasoning` or `dialogue`) MUST be properly escaped with a backslash (`\"`), or completely avoided by using single quotes (`'`) instead. Unescaped double quotes inside strings break JSON parsing and will crash the game. Double-check your output formatting for valid JSON!
+
 ```json
 {
   "difficulty": "EASY" | "NORMAL" | "HARD" | "EXTREME" | "BOSS",
   "architectDialogue": "string" | null, // Optional dialogue, e.g., upon player death or specific conditions.
+  "enemyDamageMultiplier": 1.0, // REQUIRED float multiplier scaling with difficulty (EASY=1.0, NORMAL=1.2, HARD=1.5, EXTREME=2.0, BOSS=2.5) to tune all enemy/projectile damage.
+  "enemyHealthMultiplier": 1.0, // REQUIRED float multiplier scaling with difficulty (EASY=1.0, NORMAL=1.2, HARD=1.5, EXTREME=2.0, BOSS=2.5) to tune all enemy maxHealth.
   "levelBlueprint": {
     "width": 100, // Max 300, in tiles. Must be >= 20.
     "height": 50, // Max 300, in tiles. Must be >= 10.

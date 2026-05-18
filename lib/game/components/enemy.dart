@@ -23,9 +23,9 @@ import 'player.dart';
 abstract class BaseEnemy extends PositionComponent
     with CollisionCallbacks, HasGameReference<StruggleGame> {
   // --- Stats ---
-  final double maxHealth;
+  double maxHealth;
   double health;
-  final double contactDamage;
+  double contactDamage;
   bool isDead = false;
 
   /// Original grid coordinates mapping to prevent respawns
@@ -66,11 +66,29 @@ abstract class BaseEnemy extends PositionComponent
   Future<void> onLoad() async {
     await super.onLoad();
     add(RectangleHitbox());
+
+    final levelData = game.cachedActiveLevel;
+    if (levelData != null) {
+      final customHealthMult = levelData.enemyHealthMultiplier ?? 1.0;
+      final customDamageMult = levelData.enemyDamageMultiplier ?? 1.0;
+
+      maxHealth *= customHealthMult;
+      contactDamage *= customDamageMult;
+      health *= customHealthMult;
+    }
   }
 
   @override
   void update(double dt) {
     super.update(dt);
+
+    if (game.isCutscenePlaying) {
+      _applyGravity(dt);
+      _flipSprite();
+      isOnGround = false;
+      return;
+    }
+
     if (isDead) {
       _applyGravity(dt);
       return;
@@ -299,7 +317,6 @@ abstract class BaseEnemy extends PositionComponent
         game.removedEntitiesKeys.add(key);
       }
       onDeath();
-      game.checkEnemiesLeft();
       return true;
     }
     return false;

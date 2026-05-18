@@ -61,6 +61,11 @@ abstract class MeleeEnemy extends BaseEnemy {
   void update(double dt) {
     final prevX = position.x;
 
+    if (game.isCutscenePlaying) {
+      super.update(dt);
+      _isMovingThisFrame = false;
+      return;
+    }
     if (isDead) {
       super.update(dt);
       return;
@@ -216,10 +221,10 @@ abstract class MeleeEnemy extends BaseEnemy {
         .abs();
 
     // Ensure the attack only hits targets in front of the enemy,
-    // or if their bounding boxes overlap horizontally (standing extremely close).
-    final overlapping = dx <= (size.x + player.size.x) / 2 - 4.0;
-    final isPlayerInFront =
-        overlapping || ((playerCenter - enemyCenter) * facingDirection > 0);
+    // or if they are standing extremely close/inside the enemy's center (dx < 8.0).
+    // If the player is clearly behind the enemy, they must not be hit!
+    final isBehind = (playerCenter - enemyCenter) * facingDirection < 0.0;
+    final isPlayerInFront = !isBehind || dx < 8.0;
 
     if (dx <= attackRange + GameConfig.enemyAttackReachPadding &&
         dy <= maxVerticalDiff &&

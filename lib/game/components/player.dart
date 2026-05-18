@@ -188,6 +188,16 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
   @override
   void update(double dt) {
+    super.update(dt);
+    
+    if (game.isCutscenePlaying) {
+      velocity.x = 0;
+      _applyGravity(dt);
+      _applyVelocity(dt);
+      _updateAnimation();
+      return;
+    }
+
     // Hit-stop: freeze everything during hit-stop
     if (_hitStopTimer > 0) {
       _hitStopTimer -= dt;
@@ -729,6 +739,12 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     game.onScreenShake(5.0);
     if (died) {
       _die();
+    } else {
+      final hpPct = game.playerState.health / game.playerState.maxHealth;
+      if (hpPct <= 0.3 && !game.lowHealthTauntTriggered) {
+        game.lowHealthTauntTriggered = true;
+        game.triggerDynamicTaunt('LOW_HEALTH');
+      }
     }
   }
 

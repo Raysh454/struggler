@@ -51,7 +51,10 @@ void main() {
         'pickups': [
           {'type': 'health', 'x': 30.0, 'y': 30.0}
         ],
-        'architect_dialogue': 'Test dialogue'
+        'architect_dialogue': 'Test dialogue',
+        'narrativeEvents': [],
+        'enemyDamageMultiplier': null,
+        'enemyHealthMultiplier': null
       };
 
       final levelData = LevelData.fromJson(levelJson);

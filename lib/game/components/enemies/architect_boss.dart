@@ -3,8 +3,13 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../../config.dart';
+import '../../struggler_game.dart';
 import '../effects/teleport_effect.dart';
 import '../enemy.dart';
+import '../dialogue_bubble.dart';
+import 'skeleton_enemy.dart';
+import 'bringer_enemy.dart';
+import 'nightborne_enemy.dart';
 
 // ---------------------------------------------------------------------------
 // ArchitectBoss — Placeholder. Floats in idle, teleports every N seconds.
@@ -23,6 +28,9 @@ class ArchitectBoss extends BaseEnemy {
   // --- Sprite ---
   SpriteAnimationComponent? _idleComp;
   bool _spriteLoaded = false;
+
+  // --- Boss Phases ---
+  int _currentMapPhase = 0;
 
   // --- Gameplay ---
   // Overridden takeDamage handles indestructibility
@@ -43,10 +51,13 @@ class ArchitectBoss extends BaseEnemy {
 
   // --- Death Sequence ---
   bool _isDying = false;
+  bool _isDefeated = false;
   double _deathTimer = 0;
   double _explosionTimer = 0;
   double _flashToggleTimer = 0;
   bool _flashState = false;
+  double _enemySpawnTimer = 5.0; // Spawns enemies every 5 seconds
+  double _originalY = 0.0;
 
   // Target position for the snap
   Vector2 _teleportTarget = Vector2.zero();
@@ -98,6 +109,7 @@ class ArchitectBoss extends BaseEnemy {
       );
       add(_idleComp!);
       _spriteLoaded = true;
+      _originalY = position.y;
     } catch (e, stack) {
       print('ERROR LOADING ARCHITECT BOSS: $e');
       print(stack);
@@ -106,6 +118,10 @@ class ArchitectBoss extends BaseEnemy {
 
   @override
   void update(double dt) {
+    if (game.isCutscenePlaying) {
+      super.update(dt);
+      return;
+    }
     if (_isDying) {
       _deathTimer -= dt;
       if (_deathTimer <= 0) {
@@ -118,6 +134,9 @@ class ArchitectBoss extends BaseEnemy {
           parent?.add(TeleportEffect(center: position + size / 2 + offset));
         }
         removeFromParent();
+        if (game is StruggleGame) {
+          (game as StruggleGame).onBossDefeated();
+        }
         return;
       }
 
@@ -149,7 +168,10 @@ class ArchitectBoss extends BaseEnemy {
       _alpha = 1.0 - progress;
 
       if (_spriteLoaded && _idleComp != null) {
-        _idleComp!.scale = Vector2(_scaleX * (facingDir == 1 ? 1 : -1), _scaleY);
+        _idleComp!.scale = Vector2(
+          _scaleX * (facingDir == 1 ? 1 : -1),
+          _scaleY,
+        );
         _idleComp!.angle += 15.0 * dt; // Spin dynamically!
         _idleComp!.paint.colorFilter = ColorFilter.mode(
           _flashState ? const Color(0xFFFFFFFF) : const Color(0xFFFF3333),
@@ -159,10 +181,26 @@ class ArchitectBoss extends BaseEnemy {
       return; // Skip normal update routines
     }
 
+    // If defeated, just bob and wait for choice
+    if (_isDefeated) {
+      _bobTimer += dt;
+      if (_spriteLoaded && _idleComp != null) {
+        _idleComp!.position = Vector2(size.x / 2, size.y / 2 + sin(_bobTimer * GameConfig.architectBobSpeed) * GameConfig.architectBobAmplitude);
+        _idleComp!.paint.colorFilter = const ColorFilter.mode(Color(0x88FF0000), BlendMode.srcATop);
+      }
+      return;
+    }
+
     // Keep him floating and immune to gravity
-    final originalY = position.y;
     super.update(dt);
-    position.y = originalY;
+    position.y = _originalY;
+
+    // --- Enemy Spawning ---
+    _enemySpawnTimer -= dt;
+    if (_enemySpawnTimer <= 0) {
+      _enemySpawnTimer = 8.0 - _currentMapPhase; // Spawns faster in later phases
+      _spawnMinion();
+    }
 
     // --- Teleport cooldown ---
     if (_phase == _TeleportPhase.none) {
@@ -249,6 +287,37 @@ class ArchitectBoss extends BaseEnemy {
 
   int facingDir = 1;
 
+  void _spawnMinion() {
+    final activeGrid = game.activeGrid;
+    if (activeGrid == null) return;
+    
+    // Pick a safe column
+    int tx = 2 + _rng.nextInt(activeGrid.width - 4);
+    int floorY = -1;
+    for (int y = 0; y < activeGrid.height; y++) {
+      if (activeGrid.isSolid(tx, y)) {
+        floorY = y;
+        break;
+      }
+    }
+    
+    if (floorY > 0) {
+      final spawnPos = Vector2(tx * GameConfig.tileSize.toDouble(), (floorY - 1) * GameConfig.tileSize.toDouble());
+      BaseEnemy minion;
+      // Spawn different enemies based on phase
+      if (_currentMapPhase >= 4) {
+        minion = _rng.nextBool() ? NightborneEnemy(position: spawnPos) : BringerEnemy(position: spawnPos);
+      } else if (_currentMapPhase >= 2) {
+        minion = _rng.nextBool() ? BringerEnemy(position: spawnPos) : SkeletonEnemy(position: spawnPos);
+      } else {
+        minion = SkeletonEnemy(position: spawnPos);
+      }
+      
+      parent?.add(minion);
+      parent?.add(TeleportEffect(center: spawnPos + Vector2(16, 16)));
+    }
+  }
+
   void _beginTeleport() {
     _phase = _TeleportPhase.tell;
     _phaseTimer = 0.30; // Brief pause before shrink
@@ -256,14 +325,52 @@ class ArchitectBoss extends BaseEnemy {
     // Spawn departure particles
     parent?.add(TeleportEffect(center: position + size / 2));
 
-    // Pick random target — 200–450 px away horizontally
-    final dir = _rng.nextBool() ? 1 : -1;
+    _teleportTarget = _findSafeTeleportLocation();
+    facingDir = _teleportTarget.x > position.x ? 1 : -1;
+  }
+
+  Vector2 _findSafeTeleportLocation() {
+    final activeGrid = game.activeGrid;
+    if (activeGrid == null) return Vector2(position.x, position.y);
+    
+    // Try to find a valid teleport location
+    for (int attempts = 0; attempts < 10; attempts++) {
+      int tx = 2 + _rng.nextInt(activeGrid.width - 4);
+      
+      int floorY = -1;
+      for (int y = 0; y < activeGrid.height; y++) {
+        if (activeGrid.isSolid(tx, y)) {
+          floorY = y;
+          break;
+        }
+      }
+      
+      if (floorY >= 3) {
+        // Check if 3x3 area above floor is empty
+        bool isEmpty = true;
+        for (int y = floorY - 3; y < floorY; y++) {
+          for (int x = tx - 1; x <= tx + 1; x++) {
+            if (activeGrid.isSolid(x, y)) {
+              isEmpty = false;
+              break;
+            }
+          }
+        }
+        
+        if (isEmpty) {
+          // Valid location found! Set new floating Y so he doesn't clip walls
+          final newY = (floorY - 2.5) * GameConfig.tileSize;
+          _originalY = newY;
+          return Vector2(tx * GameConfig.tileSize.toDouble(), newY);
+        }
+      }
+    }
+    
+    // Fallback if no safe spot found
     final dist = 200.0 + _rng.nextDouble() * 250;
-    _teleportTarget = Vector2(
-      (position.x + dir * dist).clamp(32, 5000),
-      position.y,
-    );
-    facingDir = dir == 1 ? 1 : -1;
+    final dir = _rng.nextBool() ? 1 : -1;
+    final maxBounds = (activeGrid.width * GameConfig.tileSize) - 64;
+    return Vector2((position.x + dir * dist).clamp(64, maxBounds.toDouble()), position.y);
   }
 
   @override
@@ -291,23 +398,72 @@ class ArchitectBoss extends BaseEnemy {
 
   @override
   bool takeDamage(double damage, {bool isPlunge = false}) {
-    if (isDead || _isDying) return false;
-    final fatal = super.takeDamage(damage, isPlunge: isPlunge);
-    if (!fatal) {
-      hurtTimer = 0.15; // Brief high-impact white flash
+    if (isDead || _isDying || _isDefeated) return false;
+    
+    health -= damage;
+    if (health <= 0) {
+      health = 0;
+      _isDefeated = true;
+      _phase = _TeleportPhase.none;
+      _teleportCooldown = 999999.0;
+      
+      // Stop all minions
+      parent?.children.whereType<BaseEnemy>().where((e) => e != this).forEach((e) => e.takeDamage(9999));
+      
+      if (game is StruggleGame) {
+        (game as StruggleGame).onBossDefeated();
+      }
+      return true;
     }
-    return fatal;
+
+    hurtTimer = 0.15; // Brief high-impact white flash
+    _checkPhaseTransition();
+    return false;
+  }
+
+  void _checkPhaseTransition() {
+    final pct = health / maxHealth;
+    int nextPhase = _currentMapPhase;
+
+    if (pct <= 0.2)
+      nextPhase = 4;
+    else if (pct <= 0.4)
+      nextPhase = 3;
+    else if (pct <= 0.6)
+      nextPhase = 2;
+    else if (pct <= 0.8)
+      nextPhase = 1;
+
+    if (nextPhase > _currentMapPhase) {
+      _currentMapPhase = nextPhase;
+
+      // Force an immediate teleport when phase changes
+      _beginTeleport();
+
+      // Trigger map change in StruggleGame
+      if (game is StruggleGame) {
+        (game as StruggleGame).changeMapPhase(_currentMapPhase);
+      }
+
+      // Show dialogue
+      if (_currentMapPhase <= GameConfig.architectPhaseDialogues.length) {
+        final dialogue =
+            GameConfig.architectPhaseDialogues[_currentMapPhase - 1];
+        add(DialogueBubble(text: dialogue, duration: 3.0));
+      }
+    }
   }
 
   @override
   void onDeath() {
+    // Overridden so super.takeDamage() doesn't immediately remove us
+  }
+
+  void executeDeath() {
+    if (_isDying) return;
     _isDying = true;
     _deathTimer = 2.0; // 2 seconds of glorious final boss collapse!
     _explosionTimer = 0.1;
     _flashToggleTimer = 0.05;
-
-    // Stop teleporting and bobbing
-    _phase = _TeleportPhase.none;
-    _teleportCooldown = 999999.0;
   }
 }

@@ -41,6 +41,11 @@ abstract class RangedEnemy extends BaseEnemy {
 
   @override
   void update(double dt) {
+    if (game.isCutscenePlaying) {
+      super.update(dt);
+      _isMoving = false;
+      return;
+    }
     if (isDead) {
       super.update(dt);
       return;

@@ -85,19 +85,35 @@ class LevelManager {
           );
           break;
         case 'spike':
-          // Spike handles its own +3 or -3 offset depending on orientation
-          // But it needs tile size, which is passed in size. We just need to give it grid and tile coordinates.
-          // Note that a tile block might be w > 1, so we should really pass the base tileX.
-          components.add(
-            Spike(
-              position: pos,
-              size: size,
-              theme: theme,
-              grid: grid,
-              tileX: tile.x.toInt(),
-              tileY: tile.y.toInt(),
-            ),
-          );
+          // Split wide or tall spike tiles into individual 1x1 spikes
+          // so every single spike tile evaluates its own neighbors and orients perfectly!
+          final int startX = tile.x.toInt();
+          final int startY = tile.y.toInt();
+          final int w = tile.w.toInt();
+          final int h = tile.h.toInt();
+
+          for (int dy = 0; dy < h; dy++) {
+            for (int dx = 0; dx < w; dx++) {
+              final currentGx = startX + dx;
+              final currentGy = startY + dy;
+              final individualPos = Vector2(
+                currentGx * tileSize,
+                currentGy * tileSize,
+              );
+              final individualSize = Vector2(tileSize, tileSize);
+
+              components.add(
+                Spike(
+                  position: individualPos,
+                  size: individualSize,
+                  theme: theme,
+                  grid: grid,
+                  tileX: currentGx,
+                  tileY: currentGy,
+                ),
+              );
+            }
+          }
           break;
       }
     }
@@ -206,12 +222,12 @@ class LevelManager {
         tiles: [
           // Ground floor (with gaps for challenge)
           TileData(type: 'block', x: 0, y: 19, w: 15, h: 1),
-          TileData(type: 'block', x: 15, y: 20, w: 3, h: 1),
+          //TileData(type: 'block', x: 15, y: 20, w: 3, h: 1),
           TileData(type: 'block', x: 18, y: 19, w: 12, h: 1),
           TileData(type: 'block', x: 33, y: 19, w: 27, h: 1),
 
           // Lava in the gaps
-          TileData(type: 'lava', x: 15, y: 19, w: 3, h: 1),
+          TileData(type: 'lava', x: 8, y: 17, w: 3, h: 1),
 
           // Platforms
           TileData(type: 'platform', x: 8, y: 16, w: 4, h: 1),
@@ -222,7 +238,7 @@ class LevelManager {
           TileData(type: 'platform', x: 50, y: 16, w: 8, h: 1),
 
           // Spikes on the ground
-          TileData(type: 'spike', x: 46, y: 16, w: 2, h: 1),
+          TileData(type: 'spike', x: 47, y: 18, w: 2, h: 1),
 
           // Wall
           TileData(type: 'block', x: 46, y: 15, w: 1, h: 4),
@@ -357,7 +373,7 @@ class LevelManager {
           TileData(type: 'spike', x: 53, y: 17, w: 2, h: 1),
         ],
         enemies: [
-          EnemyData(x: 24, y: 17, type: 'nightborne', patrolRange: 0),
+          //EnemyData(x: 24, y: 17, type: 'nightborne', patrolRange: 0),
           EnemyData(x: 44, y: 20, type: 'skeleton', patrolRange: 0),
           EnemyData(x: 60, y: 14, type: 'archer', patrolRange: 0),
         ],
@@ -367,8 +383,8 @@ class LevelManager {
         ],
         architectDialogue: "Fire purifies. Let's see what is left of you.",
       );
-    } else {
-      // LEVEL 4+: The Gauntlet
+    } else if (levelId == 4) {
+      // LEVEL 4: The Gauntlet
       return LevelData(
         levelId: levelId,
         difficulty: 0.9,
@@ -414,6 +430,85 @@ class LevelManager {
         ],
         architectDialogue: "A gauntlet of my own design. Do not disappoint me.",
       );
+    } else {
+      // LEVEL 5+: The Final Boss Arena
+      return LevelData(
+        levelId: levelId,
+        difficulty: 1.0,
+        width: 30,
+        height: 20,
+        spawn: (x: 2, y: 16),
+        exit: (x: 28, y: 16),
+        tiles: [
+          // Flat floor across the entire arena
+          TileData(type: 'block', x: 0, y: 18, w: 30, h: 2),
+          // Two side walls
+          TileData(type: 'block', x: -1, y: 0, w: 1, h: 20),
+          TileData(type: 'block', x: 30, y: 0, w: 1, h: 20),
+        ],
+        enemies: [EnemyData(x: 22, y: 16, type: 'architect', patrolRange: 0)],
+        pickups: [PickupData(type: 'health', x: 15, y: 16)],
+        architectDialogue: "You've come far... but this ends now.",
+      );
+    }
+  }
+
+  /// Returns the map layout for a specific phase of the Architect boss fight.
+  static List<TileData> getBossPhaseTiles(int phase) {
+    // Shared floor and walls
+    final baseArena = [
+      TileData(type: 'block', x: 0, y: 18, w: 30, h: 2), // Floor
+      TileData(type: 'block', x: -1, y: 0, w: 1, h: 20), // Left Wall
+      TileData(type: 'block', x: 30, y: 0, w: 1, h: 20), // Right Wall
+    ];
+
+    switch (phase) {
+      case 1:
+        // Phase 1 (80%): Lava pit appears in middle
+        return baseArena..addAll([
+          TileData(type: 'lava', x: 10, y: 18, w: 10, h: 1),
+          TileData(type: 'platform', x: 12, y: 15, w: 6, h: 1),
+        ]);
+      case 2:
+        // Phase 2 (60%): Floating platforms and spikes
+        return baseArena..addAll([
+          TileData(type: 'lava', x: 5, y: 18, w: 20, h: 1),
+          TileData(type: 'platform', x: 5, y: 14, w: 4, h: 1),
+          TileData(type: 'platform', x: 21, y: 14, w: 4, h: 1),
+          TileData(type: 'platform', x: 13, y: 10, w: 4, h: 1),
+          TileData(type: 'spike', x: 14, y: 9, w: 2, h: 1),
+        ]);
+      case 3:
+        // Phase 3 (40%): Moving to a high arena with spikes on the walls
+        return baseArena..addAll([
+          TileData(type: 'spike', x: 0, y: 10, w: 1, h: 8), // Left wall spikes
+          TileData(
+            type: 'spike',
+            x: 29,
+            y: 10,
+            w: 1,
+            h: 8,
+          ), // Right wall spikes
+          TileData(type: 'lava', x: 2, y: 18, w: 26, h: 1),
+          TileData(type: 'platform', x: 2, y: 14, w: 3, h: 1),
+          TileData(type: 'platform', x: 10, y: 11, w: 3, h: 1),
+          TileData(type: 'platform', x: 17, y: 11, w: 3, h: 1),
+          TileData(type: 'platform', x: 25, y: 14, w: 3, h: 1),
+        ]);
+      case 4:
+        // Phase 4 (20%): Total chaos
+        return baseArena..addAll([
+          TileData(type: 'lava', x: 1, y: 18, w: 28, h: 1),
+          TileData(type: 'platform', x: 1, y: 15, w: 2, h: 1),
+          TileData(type: 'platform', x: 7, y: 12, w: 2, h: 1),
+          TileData(type: 'platform', x: 14, y: 9, w: 2, h: 1),
+          TileData(type: 'platform', x: 21, y: 12, w: 2, h: 1),
+          TileData(type: 'platform', x: 27, y: 15, w: 2, h: 1),
+          TileData(type: 'spike', x: 14, y: 8, w: 2, h: 1),
+        ]);
+      default:
+        // Phase 0 (100% to 80%)
+        return baseArena;
     }
   }
 
