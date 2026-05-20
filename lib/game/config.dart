@@ -11,10 +11,10 @@ class GameConfig {
   static const double lavaBleed = 2.0;
 
   // --- Player Starting Defaults ---
-  static const double playerMaxHealthDefault = 1000.0;
+  static const double playerMaxHealthDefault = 100.0;
   static const double playerMaxResolveDefault = 100.0;
   static const double playerMaxStaminaDefault = 100.0;
-  static const double playerSwordDamageDefault = 2500.0;
+  static const double playerSwordDamageDefault = 25.0;
 
   // --- Player Physics & Stats ---
   static const double playerMoveSpeed = 200.0;
@@ -396,7 +396,7 @@ class GameConfig {
   ];
 
   static const String architectDeathKillDialogue =
-      "So be it... back to the void.";
+      "It is... gone. You have severed the threads.\n\nEvery level, every platform, every sunrise... erased.\n\nYou have traded your agony for a void. Tell me, Struggler...\n\nWas the quiet worth the cost of your existence?";
   static const String architectDeathSpareDialogue =
-      "You spare the hand that strikes you? Fool.";
+      "There is no path.\n\nBeyond the scope of light, beyond the reach of dark…\n\nWhat could possibly await us?\n\nAnd yet, we seek it, insatiably… Such is our fate.";
 }

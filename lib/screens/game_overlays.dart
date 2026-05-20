@@ -684,6 +684,8 @@ class _BossChoiceOverlayState extends State<BossChoiceOverlay> {
   bool _isKill = false;
   bool _fadeToWhite = false;
 
+  bool _canProceed = false;
+
   void _handleChoice(bool isKill) {
     setState(() {
       _choiceMade = true;
@@ -693,25 +695,30 @@ class _BossChoiceOverlayState extends State<BossChoiceOverlay> {
       }
     });
 
-    Future.delayed(const Duration(seconds: 4), () {
+    Future.delayed(const Duration(seconds: 5), () {
       if (!mounted) return;
-      if (isKill) {
-        // Return to main menu
-        widget.game.overlays.remove('BossChoiceOverlay');
-        widget.game.overlays.add('MainMenu');
-        // Reset game fully and load Tutorial Level (Level 0) so the background is reset correctly
-        widget.game.gameState.reset();
-        widget.game.playerState.resetFully();
-        widget.game.resetFallbackTracker();
-        widget.game.loadLevel(0);
-      } else {
-        // SPARE: Teleport directly to the next dynamic AI generated level (Level 11)
-        widget.game.overlays.remove('BossChoiceOverlay');
-        widget.game.gameState.currentLevel = 11;
-        widget.game.playerState.resetForNewLevel();
-        widget.game.loadLevel(11);
-      }
+      setState(() {
+        _canProceed = true;
+      });
     });
+  }
+
+  void _proceed() {
+    if (!_canProceed) return;
+    if (_isKill) {
+      // Return to main menu
+      widget.game.overlays.remove('BossChoiceOverlay');
+      widget.game.overlays.add('MainMenu');
+      // Reset game fully and load Tutorial Level (Level 0) so the background is reset correctly
+      widget.game.gameState.reset();
+      widget.game.playerState.resetFully();
+      widget.game.resetFallbackTracker();
+      widget.game.loadLevel(0);
+    } else {
+      // SPARE: Continue the struggle! (Use the standard exit portal logic to advance to Level 11)
+      widget.game.overlays.remove('BossChoiceOverlay');
+      widget.game.onLevelComplete();
+    }
   }
 
   @override
@@ -773,32 +780,60 @@ class _BossChoiceOverlayState extends State<BossChoiceOverlay> {
 
         // The fade-to-white or simple dialogue overlay
         if (_choiceMade)
-          AnimatedContainer(
-            duration: const Duration(seconds: 2),
-            color: _fadeToWhite
-                ? Colors.white
-                : Colors.black.withValues(alpha: 0.8),
-            curve: Curves.easeIn,
-            child: Center(
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(seconds: 2),
-                builder: (context, val, child) {
-                  return Opacity(
-                    opacity: val,
-                    child: Text(
-                      _isKill
-                          ? GameConfig.architectDeathKillDialogue
-                          : GameConfig.architectDeathSpareDialogue,
-                      style: TextStyle(
-                        color: _isKill ? Colors.black : const Color(0xFFFF2E63),
-                        fontSize: 24,
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.bold,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _proceed,
+            child: AnimatedContainer(
+              duration: const Duration(seconds: 2),
+              color: _fadeToWhite
+                  ? Colors.white
+                  : Colors.black.withValues(alpha: 0.8),
+              curve: Curves.easeIn,
+              child: Stack(
+                children: [
+                  Center(
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(seconds: 2),
+                      builder: (context, val, child) {
+                        return Opacity(
+                          opacity: val,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                            child: Text(
+                              _isKill
+                                  ? GameConfig.architectDeathKillDialogue
+                                  : GameConfig.architectDeathSpareDialogue,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _isKill ? Colors.black : const Color(0xFFFF2E63),
+                                fontSize: 24,
+                                fontStyle: FontStyle.italic,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  if (_canProceed)
+                    Positioned(
+                      bottom: 40,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Text(
+                          "Tap to continue...",
+                          style: TextStyle(
+                            color: _isKill ? Colors.black54 : Colors.white54,
+                            fontSize: 18,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
                       ),
                     ),
-                  );
-                },
+                ],
               ),
             ),
           ),

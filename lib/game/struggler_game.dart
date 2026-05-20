@@ -364,7 +364,9 @@ class StruggleGame extends FlameGame
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       if (_targetPrefetchLevelId != levelId) {
-        print('[StruggleGame] Aborting orphaned map generation for level $levelId (Target is now $_targetPrefetchLevelId).');
+        print(
+          '[StruggleGame] Aborting orphaned map generation for level $levelId (Target is now $_targetPrefetchLevelId).',
+        );
         return null;
       }
       print(
@@ -401,7 +403,9 @@ class StruggleGame extends FlameGame
         final levelData = _parseLevelDataFromAI(levelId, json);
 
         if (_targetPrefetchLevelId != levelId) {
-          print('[StruggleGame] Aborting orphaned map generation for level $levelId after AI fetch (Target is now $_targetPrefetchLevelId).');
+          print(
+            '[StruggleGame] Aborting orphaned map generation for level $levelId after AI fetch (Target is now $_targetPrefetchLevelId).',
+          );
           return null;
         }
 
@@ -1039,6 +1043,7 @@ class StruggleGame extends FlameGame
   /// Called when Architect dies and animation finishes
   void onBossDefeated() {
     AudioManager.stopBgm();
+    AudioManager.playBgm(AudioManager.musicMenu);
     overlays.add('BossChoiceOverlay');
   }
 }
