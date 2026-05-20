@@ -1,8 +1,8 @@
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
-import '../config.dart';
 import 'dart:ui';
 import 'dart:math';
+import '../config.dart';
 
 import '../struggler_game.dart';
 
@@ -17,7 +17,7 @@ class LostWillPickup extends PositionComponent with CollisionCallbacks, HasGameR
     required this.willpowerAmount,
   }) : super(
           position: position,
-          size: Vector2(24, 24),
+          size: GameConfig.lostWillPickupSize,
         );
 
   @override
@@ -61,9 +61,4 @@ class LostWillPickup extends PositionComponent with CollisionCallbacks, HasGameR
     );
   }
 
-  @override
-  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
-    super.onCollisionStart(intersectionPoints, other);
-    // Player collision is handled entirely within the Player component to centralize it.
-  }
 }

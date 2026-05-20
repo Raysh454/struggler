@@ -221,4 +221,29 @@ class LevelData {
         'enemyDamageMultiplier': enemyDamageMultiplier,
         'enemyHealthMultiplier': enemyHealthMultiplier,
       };
+
+  /// Create a copy with difficulty tuning params merged in.
+  LevelData copyWithDifficulty({
+    double? enemyDamageMultiplier,
+    double? enemyHealthMultiplier,
+    String? architectDialogue,
+    List<NarrativeEvent>? narrativeEvents,
+  }) {
+    return LevelData(
+      levelId: levelId,
+      difficulty: difficulty,
+      width: width,
+      height: height,
+      spawn: spawn,
+      exit: exit,
+      tiles: tiles,
+      enemies: enemies,
+      pickups: pickups,
+      architectDialogue: architectDialogue ?? this.architectDialogue,
+      narrativeEvents: narrativeEvents ?? this.narrativeEvents,
+      enemyDamageMultiplier: enemyDamageMultiplier ?? this.enemyDamageMultiplier,
+      enemyHealthMultiplier: enemyHealthMultiplier ?? this.enemyHealthMultiplier,
+    );
+  }
 }
+

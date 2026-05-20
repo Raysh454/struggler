@@ -8,7 +8,7 @@ class GameState {
   DateTime? levelStartTime;
   final List<double> levelCompletionTimes; // seconds per level
 
-  GameState({this.currentLevel = 1, this.maxLevels = 20})
+  GameState({this.currentLevel = 0, this.maxLevels = 10})
     : isPaused = false,
       levelStartTime = null,
       levelCompletionTimes = [];
@@ -29,14 +29,21 @@ class GameState {
 
   /// Which narrative arc are we in?
   String get narrativeArc {
-    if (currentLevel <= 5) return 'awakening';
-    if (currentLevel <= 14) return 'realization';
-    if (currentLevel <= 20) return 'confrontation';
+    if (currentLevel == 0) return 'tutorial';
+    if (currentLevel <= 3) return 'awakening';
+    if (currentLevel <= 7) return 'realization';
+    if (currentLevel <= 10) return 'confrontation';
     return 'endless';
   }
 
   /// Is this a level with a fixed story dialogue?
   bool get hasFixedDialogue {
-    return [1, 5, 10, 15, 20].contains(currentLevel);
+    return [1, 3, 5, 7, 10].contains(currentLevel);
+  }
+
+  void reset() {
+    currentLevel = 0;
+    levelStartTime = null;
+    levelCompletionTimes.clear();
   }
 }

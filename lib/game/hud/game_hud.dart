@@ -10,14 +10,15 @@ class GameHud extends PositionComponent with HasGameReference<StruggleGame> {
   final PlayerState playerState;
   final int currentLevel;
 
-  GameHud({
-    required this.playerState,
-    required this.currentLevel,
-  }) : super(
-          position: Vector2(16, 16),
-          size: Vector2(300, 105), // Increased height to house stamina and new counters
-          priority: 100, // Render on top
-        );
+  GameHud({required this.playerState, required this.currentLevel})
+    : super(
+        position: Vector2(16, 16),
+        size: Vector2(
+          300,
+          105,
+        ), // Increased height to house stamina and new counters
+        priority: 100, // Render on top
+      );
 
   @override
   void render(Canvas canvas) {
@@ -90,14 +91,19 @@ class GameHud extends PositionComponent with HasGameReference<StruggleGame> {
     _drawText(canvas, 'LEVEL $currentLevel', 0, 68, 13);
 
     // --- Enemy Counter ---
-    final enemiesRemaining = game.world.children.whereType<BaseEnemy>().where((e) => !e.isDead).length;
+    final enemiesRemaining = game.world.children
+        .whereType<BaseEnemy>()
+        .where((e) => !e.isDead)
+        .length;
     _drawText(
       canvas,
       'ENEMIES: $enemiesRemaining',
       105,
       68,
       12,
-      color: enemiesRemaining == 0 ? const Color(0xFF44FF44) : const Color(0xFFFF5555),
+      color: enemiesRemaining == 0
+          ? const Color(0xFF44FF44)
+          : const Color(0xFFFF5555),
     );
 
     // --- Hope Heals Counter ---
@@ -108,7 +114,9 @@ class GameHud extends PositionComponent with HasGameReference<StruggleGame> {
       210,
       68,
       12,
-      color: healsRemaining > 0 ? const Color(0xFF00FF88) : const Color(0xFFFF5555),
+      color: healsRemaining > 0
+          ? const Color(0xFF00FF88)
+          : const Color(0xFFFF5555),
     );
 
     // --- Death Count ---

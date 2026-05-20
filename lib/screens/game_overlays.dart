@@ -11,12 +11,12 @@ class GlassButton extends StatefulWidget {
   final Color color;
 
   const GlassButton({
+    super.key,
     required this.label,
     required this.onTap,
     this.enabled = true,
     this.color = const Color(0xFFFF2E63),
-    Key? key,
-  }) : super(key: key);
+  });
 
   @override
   State<GlassButton> createState() => _GlassButtonState();
@@ -41,20 +41,20 @@ class _GlassButtonState extends State<GlassButton> {
           decoration: BoxDecoration(
             color: widget.enabled
                 ? (_isHovered
-                      ? baseColor.withOpacity(0.3)
-                      : baseColor.withOpacity(0.15))
+                      ? baseColor.withValues(alpha: 0.3)
+                      : baseColor.withValues(alpha: 0.15))
                 : Colors.white10,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: widget.enabled
-                  ? (_isHovered ? baseColor : baseColor.withOpacity(0.5))
+                  ? (_isHovered ? baseColor : baseColor.withValues(alpha: 0.5))
                   : Colors.white24,
               width: 1.5,
             ),
             boxShadow: widget.enabled && _isHovered
                 ? [
                     BoxShadow(
-                      color: baseColor.withOpacity(0.4),
+                      color: baseColor.withValues(alpha: 0.4),
                       blurRadius: 8,
                       spreadRadius: 1,
                     ),
@@ -65,6 +65,7 @@ class _GlassButtonState extends State<GlassButton> {
             child: Text(
               widget.label,
               style: TextStyle(
+                fontFamily: 'Gotfridus',
                 color: widget.enabled ? Colors.white : Colors.grey.shade400,
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -82,7 +83,7 @@ class _GlassButtonState extends State<GlassButton> {
 class MainMenuOverlay extends StatelessWidget {
   final StruggleGame game;
 
-  const MainMenuOverlay({required this.game, Key? key}) : super(key: key);
+  const MainMenuOverlay({super.key, required this.game});
 
   @override
   Widget build(BuildContext context) {
@@ -97,10 +98,10 @@ class MainMenuOverlay extends StatelessWidget {
               width: 400,
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.65),
+                color: Colors.black.withValues(alpha: 0.65),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFFFF2E63).withOpacity(0.4),
+                  color: const Color(0xFFFF2E63).withValues(alpha: 0.4),
                   width: 2,
                 ),
               ),
@@ -111,6 +112,7 @@ class MainMenuOverlay extends StatelessWidget {
                   const Text(
                     'STRUGGLER',
                     style: TextStyle(
+                      fontFamily: 'Gotfridus',
                       color: Color(0xFFFF2E63),
                       fontSize: 42,
                       fontWeight: FontWeight.w900,
@@ -123,6 +125,7 @@ class MainMenuOverlay extends StatelessWidget {
                   const Text(
                     "THE ARCHITECT'S TRIAL",
                     style: TextStyle(
+                      fontFamily: 'Gotfridus',
                       color: Colors.white70,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -141,57 +144,6 @@ class MainMenuOverlay extends StatelessWidget {
                       game.showControlsNotifier.value = true;
                     },
                   ),
-
-                  const SizedBox(height: 24),
-
-                  // Control Instructions Panel
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white10),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'CONTROLS:',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        _ControlRow(
-                          keyName: 'A / D',
-                          action: 'Move Left / Right',
-                        ),
-                        _ControlRow(
-                          keyName: 'W',
-                          action: 'Jump (Double Jump available)',
-                        ),
-                        _ControlRow(
-                          keyName: 'Space',
-                          action: 'Dodge (Stamina-Draining I-Frames)',
-                        ),
-                        _ControlRow(
-                          keyName: 'R',
-                          action: 'Indomitable Lifesteal (Full Resolve)',
-                        ),
-                        _ControlRow(
-                          keyName: 'E',
-                          action: 'Interact / Enter Realm Portal',
-                        ),
-                        _ControlRow(
-                          keyName: 'Left Click',
-                          action: 'Sword Attack Combos',
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -202,53 +154,12 @@ class MainMenuOverlay extends StatelessWidget {
   }
 }
 
-class _ControlRow extends StatelessWidget {
-  final String keyName;
-  final String action;
-
-  const _ControlRow({required this.keyName, required this.action});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.white24),
-            ),
-            child: Text(
-              keyName,
-              style: const TextStyle(
-                color: Color(0xFF08D9D6),
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              action,
-              style: const TextStyle(color: Colors.white70, fontSize: 10),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// The Guardian Upgrades Overlay to buy stats upgrades using willpower and diamonds.
 class GuardianUpgradesOverlay extends StatefulWidget {
   final StruggleGame game;
 
-  const GuardianUpgradesOverlay({required this.game, Key? key})
-    : super(key: key);
+  const GuardianUpgradesOverlay({super.key, required this.game});
 
   @override
   State<GuardianUpgradesOverlay> createState() =>
@@ -271,12 +182,12 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
               width: 420,
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
+                color: Colors.black.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: const Color(
                     0xFF00E5FF,
-                  ).withOpacity(0.4), // Serene Cyan
+                  ).withValues(alpha: 0.4), // Serene Cyan
                   width: 2,
                 ),
               ),
@@ -287,6 +198,7 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
                   const Text(
                     'GUARDIAN UPGRADES',
                     style: TextStyle(
+                      fontFamily: 'Gotfridus',
                       color: Color(0xFF00E5FF),
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
@@ -299,6 +211,7 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
                   const Text(
                     'TEMPLE OF WILLPOWER',
                     style: TextStyle(
+                      fontFamily: 'Gotfridus',
                       color: Color(0x80FFFFFF),
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -436,7 +349,7 @@ class _CurrencyIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.white10),
       ),
@@ -497,9 +410,9 @@ class _UpgradeItem extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         children: [
@@ -542,7 +455,7 @@ class _UpgradeItem extends StatelessWidget {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.65),
+                    color: Colors.white.withValues(alpha: 0.65),
                     fontSize: 10,
                   ),
                 ),
@@ -612,10 +525,10 @@ class TopRightDialogueOverlay extends StatefulWidget {
   final StruggleGame game;
 
   const TopRightDialogueOverlay({
+    super.key,
     required this.dialogue,
     required this.game,
-    Key? key,
-  }) : super(key: key);
+  });
 
   @override
   State<TopRightDialogueOverlay> createState() =>
@@ -668,7 +581,7 @@ class _TopRightDialogueOverlayState extends State<TopRightDialogueOverlay>
           width: 300,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.7),
+            color: Colors.black.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: const Color(0xFFB71C1C), width: 1.5),
             boxShadow: const [
@@ -704,6 +617,7 @@ class _TopRightDialogueOverlayState extends State<TopRightDialogueOverlay>
                     const Text(
                       'THE ARCHITECT',
                       style: TextStyle(
+                        fontFamily: 'Gotfridus',
                         color: Color(0xFFFF5252),
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -714,6 +628,7 @@ class _TopRightDialogueOverlayState extends State<TopRightDialogueOverlay>
                     Text(
                       widget.dialogue,
                       style: const TextStyle(
+                        fontFamily: 'Gotfridus',
                         color: Colors.white,
                         fontSize: 12,
                         fontStyle: FontStyle.italic,
@@ -734,7 +649,7 @@ class _TopRightDialogueOverlayState extends State<TopRightDialogueOverlay>
 class BossChoiceOverlay extends StatefulWidget {
   final StruggleGame game;
 
-  const BossChoiceOverlay({required this.game, Key? key}) : super(key: key);
+  const BossChoiceOverlay({super.key, required this.game});
 
   @override
   State<BossChoiceOverlay> createState() => _BossChoiceOverlayState();
@@ -760,15 +675,17 @@ class _BossChoiceOverlayState extends State<BossChoiceOverlay> {
         // Return to main menu
         widget.game.overlays.remove('BossChoiceOverlay');
         widget.game.overlays.add('MainMenu');
-        // Optional: Reset game fully
-        widget.game.gameState.currentLevel = 1;
-        widget.game.playerState.resetForNewLevel();
+        // Reset game fully and load Tutorial Level (Level 0) so the background is reset correctly
+        widget.game.gameState.reset();
+        widget.game.playerState.resetFully();
+        widget.game.resetFallbackTracker();
+        widget.game.loadLevel(0);
       } else {
-        // Return to main menu as well!
+        // SPARE: Teleport directly to the next dynamic AI generated level (Level 11)
         widget.game.overlays.remove('BossChoiceOverlay');
-        widget.game.overlays.add('MainMenu');
-        widget.game.gameState.currentLevel = 1;
+        widget.game.gameState.currentLevel = 11;
         widget.game.playerState.resetForNewLevel();
+        widget.game.loadLevel(11);
       }
     });
   }
@@ -780,7 +697,7 @@ class _BossChoiceOverlayState extends State<BossChoiceOverlay> {
         // The choice UI
         if (!_choiceMade)
           Container(
-            color: Colors.black.withOpacity(0.8),
+            color: Colors.black.withValues(alpha: 0.8),
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -788,6 +705,7 @@ class _BossChoiceOverlayState extends State<BossChoiceOverlay> {
                   const Text(
                     'THE ARCHITECT FALLS',
                     style: TextStyle(
+                      fontFamily: 'Gotfridus',
                       color: Color(0xFFFF2E63),
                       fontSize: 36,
                       fontWeight: FontWeight.w900,
@@ -801,6 +719,7 @@ class _BossChoiceOverlayState extends State<BossChoiceOverlay> {
                   const Text(
                     'Will you end this world, or continue the struggle?',
                     style: TextStyle(
+                      fontFamily: 'Gotfridus',
                       color: Colors.white70,
                       fontSize: 16,
                       fontStyle: FontStyle.italic,
@@ -832,7 +751,7 @@ class _BossChoiceOverlayState extends State<BossChoiceOverlay> {
         if (_choiceMade)
           AnimatedContainer(
             duration: const Duration(seconds: 2),
-            color: _fadeToWhite ? Colors.white : Colors.black.withOpacity(0.8),
+            color: _fadeToWhite ? Colors.white : Colors.black.withValues(alpha: 0.8),
             curve: Curves.easeIn,
             child: Center(
               child: TweenAnimationBuilder<double>(

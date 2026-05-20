@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../../config.dart';
-import '../../struggler_game.dart';
 import '../effects/teleport_effect.dart';
 import '../enemy.dart';
 import '../dialogue_bubble.dart';
@@ -134,9 +133,7 @@ class ArchitectBoss extends BaseEnemy {
           parent?.add(TeleportEffect(center: position + size / 2 + offset));
         }
         removeFromParent();
-        if (game is StruggleGame) {
-          (game as StruggleGame).onBossDefeated();
-        }
+        game.onBossDefeated();
         return;
       }
 
@@ -280,7 +277,7 @@ class ArchitectBoss extends BaseEnemy {
         _idleComp!.paint.colorFilter = null;
         _idleComp!.paint.color = const Color(
           0xffffffff,
-        ).withOpacity(_alpha.clamp(0.0, 1.0));
+        ).withValues(alpha: _alpha.clamp(0.0, 1.0));
       }
     }
   }
@@ -410,9 +407,7 @@ class ArchitectBoss extends BaseEnemy {
       // Stop all minions
       parent?.children.whereType<BaseEnemy>().where((e) => e != this).forEach((e) => e.takeDamage(9999));
       
-      if (game is StruggleGame) {
-        (game as StruggleGame).onBossDefeated();
-      }
+      game.onBossDefeated();
       return true;
     }
 
@@ -425,14 +420,15 @@ class ArchitectBoss extends BaseEnemy {
     final pct = health / maxHealth;
     int nextPhase = _currentMapPhase;
 
-    if (pct <= 0.2)
+    if (pct <= 0.2) {
       nextPhase = 4;
-    else if (pct <= 0.4)
+    } else if (pct <= 0.4) {
       nextPhase = 3;
-    else if (pct <= 0.6)
+    } else if (pct <= 0.6) {
       nextPhase = 2;
-    else if (pct <= 0.8)
+    } else if (pct <= 0.8) {
       nextPhase = 1;
+    }
 
     if (nextPhase > _currentMapPhase) {
       _currentMapPhase = nextPhase;
@@ -440,10 +436,7 @@ class ArchitectBoss extends BaseEnemy {
       // Force an immediate teleport when phase changes
       _beginTeleport();
 
-      // Trigger map change in StruggleGame
-      if (game is StruggleGame) {
-        (game as StruggleGame).changeMapPhase(_currentMapPhase);
-      }
+      game.changeMapPhase(_currentMapPhase);
 
       // Show dialogue
       if (_currentMapPhase <= GameConfig.architectPhaseDialogues.length) {

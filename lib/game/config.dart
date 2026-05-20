@@ -123,7 +123,7 @@ class GameConfig {
   static const double enemyHealthBringer = 240.0;
   static const double enemyHealthArcher = 75.0;
   static const double enemyHealthWizard = 80.0;
-  static const double enemyHealthArchitect = 1500;
+  static const double enemyHealthArchitect = 2000;
 
   // --- Enemy Willpower (Will) Drop Configs ---
   static const int enemyWillSkeleton = 30;
@@ -132,7 +132,7 @@ class GameConfig {
   static const int enemyWillBringer = 80;
   static const int enemyWillArcher = 25;
   static const int enemyWillWizard = 25;
-  static const int enemyWillArchitect = 1500;
+  static const int enemyWillArchitect = 2000;
 
   // --- Enemy Resolve Drop Configs ---
   static const double enemyResolveSkeleton = 25.0;
@@ -301,9 +301,90 @@ class GameConfig {
   static const int validatorExitSafeRadius = 2;
   static const int validatorMaxRepairIterations = 3;
 
+  /// Maximum gap (in tiles) between consecutive platforms before a visibility
+  /// bridge platform is inserted. At 2x zoom on a typical screen, ~12 tiles
+  /// are visible. We use 6 so the next platform is always well within view.
+  static const int validatorMaxVisibleGap = 6;
+
   // --- AI / Level Generation ---
   /// Set to true to generate a new AI level on death. False = replay same cached level.
   static const bool generateNewLevelOnDeath = false;
+
+  /// Difficulty trigger mode: 'enemies' or 'proximity'.
+  /// 'enemies' = trigger when alive enemies <= difficultyTriggerEnemiesLeft.
+  /// 'proximity' = trigger when player is within difficultyTriggerProximityDistance of exit portal.
+  static const String difficultyTriggerMode = 'enemies';
+
+  /// Number of enemies remaining that triggers the AI difficulty generation
+  /// for the next level using live combat telemetry from the current level.
+  static const int difficultyTriggerEnemiesLeft = 3;
+
+  /// Distance (in pixels) from the exit portal at which proximity-based
+  /// difficulty generation is triggered.
+  static const double difficultyTriggerProximityDistance = 300.0;
+
+  /// Maximum number of diamonds the AI can place per level.
+  static const int maxDiamondsPerLevel = 1;
+
+  /// Minimum number of enemies per AI-generated level.
+  static const int minEnemiesPerLevel = 6;
+
+  /// Camera zoom level for gameplay.
+  static const double cameraZoom = 2.0;
+
+  // --- Combat Rewards ---
+  /// Resolve gained when dodging through a projectile.
+  static const double perfectDodgeResolveReward = 5.0;
+
+  // --- Screen Shake ---
+  /// Default screen shake duration in seconds.
+  static const double screenShakeDuration = 0.15;
+
+  // --- Line of Sight ---
+  /// Raycast step size (px) for line-of-sight checks.
+  static const double losRaycastStep = 8.0;
+
+  /// Minimum distance (px) below which LOS is always true.
+  static const double losMinDistance = 4.0;
+
+  // --- Companion Cat Follow ---
+  /// Horizontal offset (px) the cat trails behind the player.
+  static const double catFollowOffset = 24.0;
+
+  // --- Void Death Buffers ---
+  /// Pixels below the map bottom before an enemy is killed.
+  static const double enemyVoidDeathBuffer = 128.0;
+
+  /// Pixels below the map bottom before the player dies.
+  static const double playerVoidDeathBuffer = 64.0;
+
+  // --- Enemy Safe Ground Search ---
+  /// Column radius (tiles) to search for safe ground when spawning enemies.
+  static const int enemySafeGroundSearchRadius = 8;
+
+  /// Stagger velocity deceleration factor per frame.
+  static const double enemyStaggerDeceleration = 0.82;
+
+  // --- Player Drop-Through ---
+  /// Initial downward velocity when dropping through a platform.
+  static const double playerDropThroughVelocity = 50.0;
+
+  /// Duration (seconds) to ignore platforms when dropping through.
+  static const double playerDropThroughDuration = 0.25;
+
+  // --- Pickup Sizes ---
+  /// Size of the Lost Will pickup.
+  static final Vector2 lostWillPickupSize = Vector2(24, 24);
+
+  // --- Projectile Sizes ---
+  /// Size of the arrow projectile.
+  static final Vector2 arrowProjectileSize = Vector2(24, 8);
+
+  /// Size of the orb projectile.
+  static final Vector2 orbProjectileSize = Vector2(12, 12);
+
+  /// Maximum range of the thunder hand spell.
+  static const double thunderHandMaxRange = 700.0;
 
   // --- Boss Fight Dialogues ---
   static const List<String> architectPhaseDialogues = [

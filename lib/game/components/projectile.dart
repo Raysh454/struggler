@@ -73,7 +73,8 @@ abstract class Projectile extends PositionComponent
         if (!_dodgedPlayers.contains(other)) {
           _dodgedPlayers.add(other);
           game.playerState.perfectDodges++;
-          game.playerState.addResolve(5);
+          game.playerState.perfectDodgesThisLevel++;
+          game.playerState.addResolve(GameConfig.perfectDodgeResolveReward);
         }
         // Do NOT destroy the projectile or stop it! Let it cleanly fly straight through!
       }
@@ -98,10 +99,7 @@ class ArrowProjectile extends Projectile {
     required this.direction,
     this.targetVector,
   }) : super(
-         size: Vector2(
-           24,
-           8,
-         ), // Perfect wide aspect ratio for the arrow sprite frame!
+         size: GameConfig.arrowProjectileSize,
          damage: GameConfig.arrowDamage,
          maxRange: GameConfig.arrowRange,
        ) {
@@ -168,12 +166,11 @@ class OrbProjectile extends Projectile {
   Vector2? _currentVelocity;
 
   OrbProjectile({
-    required Vector2 position,
+    required super.position,
     required this.direction,
     this.targetVector,
   }) : super(
-         position: position,
-         size: Vector2(12, 12), // Smaller, tighter sizing
+         size: GameConfig.orbProjectileSize,
          damage: GameConfig.orbDamage,
          maxRange: GameConfig.orbRange,
        );
@@ -197,8 +194,8 @@ class OrbProjectile extends Projectile {
     final currentAngle = atan2(_currentVelocity!.y, _currentVelocity!.x);
     
     double angleDiff = targetAngle - currentAngle;
-    while (angleDiff > pi) angleDiff -= 2 * pi;
-    while (angleDiff < -pi) angleDiff += 2 * pi;
+    while (angleDiff > pi) { angleDiff -= 2 * pi; }
+    while (angleDiff < -pi) { angleDiff += 2 * pi; }
     
     final maxTurn = _turnRate * dt;
     final turn = angleDiff.clamp(-maxTurn, maxTurn);
@@ -247,7 +244,7 @@ class ThunderHandProjectile extends Projectile {
     : super(
         size: GameConfig.thunderHandSize,
         damage: GameConfig.thunderDamage,
-        maxRange: 700,
+        maxRange: GameConfig.thunderHandMaxRange,
       );
 
   @override
@@ -258,7 +255,7 @@ class ThunderHandProjectile extends Projectile {
       const prefix =
           'characters/bringer/IndividualSprite/Spell/Bringer-of-Death_Spell_';
       for (int i = 1; i <= 16; i++) {
-        final img = await game.images.load('${prefix}$i.png');
+        final img = await game.images.load('$prefix$i.png');
         sprites.add(Sprite(img));
       }
       // Slower, dramatic cast speed (0.25s per frame) and single-play (loop: false)
@@ -319,7 +316,8 @@ class ThunderHandProjectile extends Projectile {
             player.receiveDamage(damage);
           } else {
             player.game.playerState.perfectDodges++;
-            player.game.playerState.addResolve(5);
+            player.game.playerState.perfectDodgesThisLevel++;
+            player.game.playerState.addResolve(GameConfig.perfectDodgeResolveReward);
           }
           _hasAppliedDamage = true;
         }

@@ -23,7 +23,7 @@ void main() {
         expect(state.diamondsCollected, 0);
         expect(state.willpower, 0);
         expect(state.deathCount, 0);
-        expect(state.currentLevel, 1);
+        expect(state.currentLevel, 0);
         expect(state.enemiesKilled, 0);
       });
 
@@ -174,13 +174,59 @@ void main() {
       });
     });
 
+    group('resetFully', () {
+      test('resets all stats, currencies, and upgrades to default start values', () {
+        state.maxHealth = 160.0;
+        state.health = 120.0;
+        state.maxResolve = 140.0;
+        state.resolve = 50.0;
+        state.isIndomitable = true;
+        state.maxStamina = 120.0;
+        state.stamina = 80.0;
+        state.swordDamage = 45.0;
+        state.perfectDodges = 10;
+        state.diamondsCollected = 5;
+        state.willpower = 400;
+        state.healthUpgradeLevel = 4;
+        state.resolveUpgradeLevel = 3;
+        state.staminaUpgradeLevel = 2;
+        state.swordUpgradeLevel = 3;
+        state.catHealUpgradeLevel = 2;
+        state.catHealsRemaining = 1;
+        state.deathCount = 15;
+        state.enemiesKilled = 80;
+
+        state.resetFully();
+
+        expect(state.maxHealth, 100.0);
+        expect(state.health, 100.0);
+        expect(state.maxResolve, 100.0);
+        expect(state.resolve, 0.0);
+        expect(state.isIndomitable, false);
+        expect(state.maxStamina, 100.0);
+        expect(state.stamina, 100.0);
+        expect(state.swordDamage, 25.0);
+        expect(state.perfectDodges, 0);
+        expect(state.diamondsCollected, 0);
+        expect(state.willpower, 0);
+        expect(state.healthUpgradeLevel, 1);
+        expect(state.resolveUpgradeLevel, 1);
+        expect(state.staminaUpgradeLevel, 1);
+        expect(state.swordUpgradeLevel, 1);
+        expect(state.catHealUpgradeLevel, 1);
+        expect(state.catHealsRemaining, GameConfig.catHealsPerLevel);
+        expect(state.deathCount, 0);
+        expect(state.enemiesKilled, 0);
+      });
+    });
+
     group('toTelemetry', () {
       test('returns correct snapshot with default values', () {
         final telemetry = state.toTelemetry();
         expect(telemetry['health_percent'], 100);
         expect(telemetry['resolve_percent'], 0);
         expect(telemetry['death_count'], 0);
-        expect(telemetry['current_level'], 1);
+        expect(telemetry['current_level'], 0);
         expect(telemetry['enemies_killed'], 0);
         expect(telemetry['perfect_dodges'], 0);
         expect(telemetry['diamonds_collected'], 0);
@@ -203,6 +249,33 @@ void main() {
         expect(telemetry['enemies_killed'], 15);
         expect(telemetry['perfect_dodges'], 4);
         expect(telemetry['diamonds_collected'], 2);
+      });
+    });
+
+    group('toLiveTelemetry and deathsThisLevel', () {
+      test('returns correct live telemetry snapshot', () {
+        state.deathsThisLevel = 2;
+        state.damageTakenThisLevel = 45.0;
+        state.enemiesKilledThisLevel = 3;
+        state.perfectDodgesThisLevel = 1;
+        state.totalEnemiesInLevel = 8;
+
+        final liveTelemetry = state.toLiveTelemetry();
+        expect(liveTelemetry['healthPercent'], 100);
+        expect(liveTelemetry['damageTakenSoFar'], 45.0);
+        expect(liveTelemetry['enemiesDefeatedSoFar'], 3);
+        expect(liveTelemetry['perfectDodgesSoFar'], 1);
+        expect(liveTelemetry['totalEnemiesInLevel'], 8);
+        expect(liveTelemetry['deathsThisLevel'], 2);
+      });
+
+      test('resets deathsThisLevel on new level but NOT on retry', () {
+        state.deathsThisLevel = 3;
+        state.resetForRetry();
+        expect(state.deathsThisLevel, 3); // retained on retry!
+
+        state.resetForNewLevel();
+        expect(state.deathsThisLevel, 0); // reset on new level!
       });
     });
 

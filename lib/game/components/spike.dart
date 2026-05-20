@@ -75,9 +75,6 @@ class Spike extends PositionComponent with CollisionCallbacks {
     final sprite = theme.floorSpikeSprite;
     const double spikeTileSize = GameConfig.tileSize;
 
-    final halfX = size.x / 2;
-    final halfY = size.y / 2;
-
     // Draw all spikes horizontally relative to the component bounds (Flame handles rotation/translation)
     for (double x = 0; x < size.x; x += spikeTileSize) {
       sprite.render(

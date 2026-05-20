@@ -135,7 +135,9 @@ class _TouchControls extends StatelessWidget {
                       icon: Icons.auto_awesome,
                       label: 'INTRACT',
                       onDown: () {
-                        if (game.player.currentPortal != null) {
+                        if (game.isCutscenePlaying) {
+                          game.skipCutscene();
+                        } else if (game.player.currentPortal != null) {
                           game.transitionThroughPortal(isReturn: game.player.currentPortal!.isReturn);
                         } else if (game.player.currentGuardian != null) {
                           game.openGuardianUpgrades();

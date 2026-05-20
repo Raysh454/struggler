@@ -54,15 +54,12 @@ class CompanionCat extends PositionComponent
   // --- Behavior & States ---
   CatBehaviorMode _behaviorMode = CatBehaviorMode.following;
   double _attackCooldownTimer = 0.0;
-  bool _hasHealedThisLife = false;
-
   // --- Attack Target ---
   BaseEnemy? _attackTarget;
   double _attackDurationTimer = 0.0;
   double _damageDelayTimer = 0.0;
 
   // --- Heal Lunge Target & Cooldown ---
-  Vector2? _bounceTarget;
   double _bounceTimer = 0.0;
 
   // --- Custom Heal Render Magic Particle System & Visual Slashes ---
@@ -214,7 +211,7 @@ class CompanionCat extends PositionComponent
 
         // Standard Smooth Following Logic
         _facingDirection = player.facingDirection;
-        final targetX = player.position.x - (_facingDirection * 24.0);
+        final targetX = player.position.x - (_facingDirection * GameConfig.catFollowOffset);
         final targetY = player.position.y + player.size.y - size.y;
 
         // Smoothly interpolate positions (spring/lerp)
@@ -306,7 +303,6 @@ class CompanionCat extends PositionComponent
         if (myCenter.distanceTo(playerCenter) < 14.0) {
           // 1. Perform Heal
           game.playerState.heal(GameConfig.catHealAmount);
-          _hasHealedThisLife = true;
 
           // 2. Generate Render Magic Particles around the player!
           for (int i = 0; i < 15; i++) {

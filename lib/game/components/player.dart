@@ -155,6 +155,8 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         position: Vector2(size.x / 2, size.y),
         anchor: Anchor.bottomCenter,
       );
+      _animationComponent!.paint.isAntiAlias = false;
+      _animationComponent!.paint.filterQuality = FilterQuality.none;
       add(_animationComponent!);
     } catch (e) {
       // Asset loading failed, fallback to hitbox
@@ -255,6 +257,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
           game.onScreenShake(4.0); // Shake screen
           if (killed) {
             game.playerState.enemiesKilled++;
+            game.playerState.enemiesKilledThisLevel++;
             game.playerState.addResolve(enemy.resolveReward);
             game.playerState.willpower += enemy.willpowerReward;
           }
@@ -341,14 +344,34 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         triggerHopeHeal();
       }
       if (event.logicalKey == LogicalKeyboardKey.keyE) {
+        // Skip architect cutscene if one is playing
+        if (game.isCutscenePlaying) {
+          game.skipCutscene();
+          return true;
+        }
         if (currentPortal != null) {
           game.transitionThroughPortal(isReturn: currentPortal!.isReturn);
         } else if (currentExitPortal != null) {
-          final enemiesRemaining = game.world.children.whereType<BaseEnemy>().where((e) => !e.isDead).length;
+          final aliveEnemies = game.world.children.whereType<BaseEnemy>().where((e) => !e.isDead).toList();
+          final enemiesRemaining = aliveEnemies.length;
           if (enemiesRemaining == 0) {
-            game.onLevelComplete();
+            if (game.isTransitioning) {
+              print('[StruggleGame] Cannot exit level: Transition is already in progress (waiting for AI Architect generation to complete).');
+            } else {
+              final isMapPending = game.nextMapLayoutFuture != null;
+              if (isMapPending) {
+                print('[StruggleGame] Exit portal interacted! Level cleared, but awaiting AI Architect to complete map layout generation for the next level.');
+              } else {
+                print('[StruggleGame] Exit portal interacted! Level cleared. Initiating immediate level transition...');
+              }
+              game.onLevelComplete();
+            }
           } else {
             game.onScreenShake(2.0); // Mild camera shake to signal portal is locked
+            print('[StruggleGame] Cannot exit level: $enemiesRemaining enemies still alive!');
+            for (final enemy in aliveEnemies) {
+              print('  - Alive Enemy: ${enemy.runtimeType} at coordinates (${enemy.position.x.toStringAsFixed(1)}, ${enemy.position.y.toStringAsFixed(1)})');
+            }
           }
         } else if (currentGuardian != null) {
           game.openGuardianUpgrades();
@@ -400,9 +423,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
     // Drop-down logic
     if (downPressed && isOnGround && _ignorePlatformsTimer <= 0) {
-      _ignorePlatformsTimer = 0.25;
+      _ignorePlatformsTimer = GameConfig.playerDropThroughDuration;
       isOnGround = false;
-      velocity.y = 50.0; // Give a slight downward push to break ground-contact immediately
+      velocity.y = GameConfig.playerDropThroughVelocity;
     }
 
     // Jump logic
@@ -566,6 +589,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         game.onScreenShake(3.0); // Screen shake
         if (killed) {
           game.playerState.enemiesKilled++;
+          game.playerState.enemiesKilledThisLevel++;
           // Gain resolve on kill
           game.playerState.addResolve(enemy.resolveReward);
           // Reward willpower based on enemy strength
@@ -611,7 +635,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     position += velocity * dt;
     // Fall into void = death
     final mapBottom = (game.activeGrid?.height ?? 25) * GameConfig.tileSize;
-    if (position.y > mapBottom + 64) {
+    if (position.y > mapBottom + GameConfig.playerVoidDeathBuffer) {
       _die();
     }
   }
@@ -632,7 +656,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       
       final tileX = (other.initialPosition.x / GameConfig.tileSize).round();
       final tileY = (other.initialPosition.y / GameConfig.tileSize).round();
-      final key = '${game.gameState.currentLevel}_pickup_${tileX}_${tileY}';
+      final key = '${game.gameState.currentLevel}_pickup_${tileX}_$tileY';
       game.removedEntitiesKeys.add(key);
     } else if (other is DiamondPickup && !other.collected) {
       other.collected = true;
@@ -641,7 +665,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
       final tileX = (other.initialPosition.x / GameConfig.tileSize).round();
       final tileY = (other.initialPosition.y / GameConfig.tileSize).round();
-      final key = '${game.gameState.currentLevel}_pickup_${tileX}_${tileY}';
+      final key = '${game.gameState.currentLevel}_pickup_${tileX}_$tileY';
       game.collectedDiamondsKeys.add(key);
     } else if (other is LostWillPickup && !other.collected) {
       other.collected = true;
@@ -730,6 +754,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
   void receiveDamage(double damage) {
     if (isInvincible || _isDead) return;
+    game.playerState.damageTakenThisLevel += damage;
     final died = game.playerState.takeDamage(damage);
     _hurtTimer = GameConfig.playerHurtDuration;
 
@@ -758,6 +783,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     velocity.x = 0; // Stop horizontal movement on death
     
     game.playerState.deathCount++;
+    game.playerState.deathsThisLevel++;
   }
 
   void _performPlungeSplash() {
@@ -779,6 +805,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         }
         if (killed) {
           game.playerState.enemiesKilled++;
+          game.playerState.enemiesKilledThisLevel++;
           game.playerState.addResolve(enemy.resolveReward);
           game.playerState.willpower += enemy.willpowerReward;
         }

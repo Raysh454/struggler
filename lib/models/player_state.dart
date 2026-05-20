@@ -42,6 +42,13 @@ class PlayerState {
   int currentLevel;
   int enemiesKilled;
 
+  // --- Per-level live telemetry (reset each level) ---
+  double damageTakenThisLevel = 0;
+  int perfectDodgesThisLevel = 0;
+  int enemiesKilledThisLevel = 0;
+  int totalEnemiesInLevel = 0;
+  int deathsThisLevel = 0;
+
   PlayerState({
     this.maxHealth = GameConfig.playerMaxHealthDefault,
     this.maxResolve = GameConfig.playerMaxResolveDefault,
@@ -49,7 +56,7 @@ class PlayerState {
     this.swordDamage = GameConfig.playerSwordDamageDefault,
     this.diamondsCollected = 0,
     this.willpower = 0,
-    this.currentLevel = 1,
+    this.currentLevel = 0,
     this.healthUpgradeLevel = 1,
     this.resolveUpgradeLevel = 1,
     this.staminaUpgradeLevel = 1,
@@ -142,6 +149,11 @@ class PlayerState {
     // Death Mechanics: Old lost will is overwritten by current will. Diamonds are retained!
     lostWillpower = willpower;
     willpower = 0;
+
+    // Reset per-level tracking
+    damageTakenThisLevel = 0;
+    perfectDodgesThisLevel = 0;
+    enemiesKilledThisLevel = 0;
   }
 
   /// Reset health/stamina and restore manual heals for a new level. (Resolve is kept!)
@@ -149,6 +161,13 @@ class PlayerState {
     health = maxHealth;
     stamina = maxStamina;
     catHealsRemaining = catHealsMax;
+
+    // Reset per-level tracking
+    damageTakenThisLevel = 0;
+    perfectDodgesThisLevel = 0;
+    enemiesKilledThisLevel = 0;
+    totalEnemiesInLevel = 0;
+    deathsThisLevel = 0;
   }
 
   /// Add resolve. Returns true if Indomitable is now available.
@@ -172,7 +191,7 @@ class PlayerState {
   /// Get effective sword damage (multiplied by config during Indomitable state).
   double get effectiveDamage => isIndomitable ? swordDamage * GameConfig.playerIndomitableDamageMultiplier : swordDamage;
 
-  /// Telemetry snapshot for The Architect AI.
+  /// Telemetry snapshot for The Architect AI (previous level / session overview).
   Map<String, dynamic> toTelemetry() {
     return {
       'health_percent': (health / maxHealth * 100).round(),
@@ -183,5 +202,48 @@ class PlayerState {
       'perfect_dodges': perfectDodges,
       'diamonds_collected': diamondsCollected,
     };
+  }
+
+  /// Live telemetry from the current in-progress level for difficulty tuning.
+  Map<String, dynamic> toLiveTelemetry() {
+    return {
+      'healthPercent': (health / maxHealth * 100).round(),
+      'damageTakenSoFar': damageTakenThisLevel,
+      'enemiesDefeatedSoFar': enemiesKilledThisLevel,
+      'perfectDodgesSoFar': perfectDodgesThisLevel,
+      'totalEnemiesInLevel': totalEnemiesInLevel,
+      'deathsThisLevel': deathsThisLevel,
+    };
+  }
+
+  void resetFully() {
+    maxHealth = GameConfig.playerMaxHealthDefault;
+    health = maxHealth;
+    maxResolve = GameConfig.playerMaxResolveDefault;
+    resolve = 0.0;
+    isIndomitable = false;
+    maxStamina = GameConfig.playerMaxStaminaDefault;
+    stamina = maxStamina;
+    swordDamage = GameConfig.playerSwordDamageDefault;
+    perfectDodges = 0;
+    diamondsCollected = 0;
+    willpower = 0;
+    healthUpgradeLevel = 1;
+    resolveUpgradeLevel = 1;
+    staminaUpgradeLevel = 1;
+    swordUpgradeLevel = 1;
+    catHealUpgradeLevel = 1;
+    catHealsRemaining = GameConfig.catHealsPerLevel;
+    lostWillpower = 0;
+    lostWillX = null;
+    lostWillY = null;
+    lostWillLevelId = null;
+    deathCount = 0;
+    enemiesKilled = 0;
+    damageTakenThisLevel = 0;
+    perfectDodgesThisLevel = 0;
+    enemiesKilledThisLevel = 0;
+    totalEnemiesInLevel = 0;
+    deathsThisLevel = 0;
   }
 }

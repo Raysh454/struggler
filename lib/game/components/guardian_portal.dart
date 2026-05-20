@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/widgets.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart' hide Block;
@@ -32,7 +31,6 @@ class GuardianPortal extends PositionComponent
   void render(Canvas canvas) {
     final cx = size.x / 2;
     final cy = size.y / 2;
-    final r = size.x / 2;
 
     // Pulse factor
     final pulse = 1.0 + sin(_animationTimer * 5) * 0.08;
@@ -79,8 +77,8 @@ class GuardianPortal extends PositionComponent
         ),
         Paint()
           ..color = isReturn
-              ? const Color(0xFF66FF66).withOpacity(0.4 + 0.1 * i)
-              : const Color(0xFF66B2FF).withOpacity(0.4 + 0.1 * i)
+              ? const Color(0xFF66FF66).withValues(alpha: 0.4 + 0.1 * i)
+              : const Color(0xFF66B2FF).withValues(alpha: 0.4 + 0.1 * i)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );

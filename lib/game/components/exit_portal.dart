@@ -5,20 +5,16 @@ import '../config.dart';
 import '../struggler_game.dart';
 import 'enemy.dart';
 import 'player.dart';
-import 'dart:ui';
 import 'dart:math';
 
 /// Level exit portal. Touching this completes the level.
-class ExitPortal extends PositionComponent with CollisionCallbacks, HasGameReference<StruggleGame> {
+class ExitPortal extends PositionComponent
+    with CollisionCallbacks, HasGameReference<StruggleGame> {
   double _animTimer = 0;
   bool playerOverlapping = false;
 
-  ExitPortal({
-    required Vector2 position,
-  }) : super(
-          position: position,
-          size: GameConfig.exitPortalSize,
-        );
+  ExitPortal({required Vector2 position})
+    : super(position: position, size: GameConfig.exitPortalSize);
 
   @override
   Future<void> onLoad() async {
@@ -26,7 +22,10 @@ class ExitPortal extends PositionComponent with CollisionCallbacks, HasGameRefer
   }
 
   @override
-  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+  void onCollisionStart(
+    Set<Vector2> intersectionPoints,
+    PositionComponent other,
+  ) {
     super.onCollisionStart(intersectionPoints, other);
     if (other is Player) {
       other.currentExitPortal = this;
@@ -57,7 +56,10 @@ class ExitPortal extends PositionComponent with CollisionCallbacks, HasGameRefer
     final cy = size.y / 2;
     final pulse = sin(_animTimer) * 0.3 + 0.7;
 
-    final enemiesRemaining = game.world.children.whereType<BaseEnemy>().where((e) => !e.isDead).length;
+    final enemiesRemaining = game.world.children
+        .whereType<BaseEnemy>()
+        .where((e) => !e.isDead)
+        .length;
     final isLocked = enemiesRemaining > 0;
 
     // Portal glow ring
@@ -83,9 +85,7 @@ class ExitPortal extends PositionComponent with CollisionCallbacks, HasGameRefer
         height: size.y * 0.6,
       ),
       Paint()
-        ..color = isLocked
-            ? const Color(0x44FF2244)
-            : const Color(0x4464C8FF)
+        ..color = isLocked ? const Color(0x44FF2244) : const Color(0x4464C8FF)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
     );
 
@@ -104,10 +104,7 @@ class ExitPortal extends PositionComponent with CollisionCallbacks, HasGameRefer
         textDirection: TextDirection.ltr,
       );
       textPainter.layout();
-      textPainter.paint(
-        canvas, 
-        Offset(cx - textPainter.width / 2, -15),
-      );
+      textPainter.paint(canvas, Offset(cx - textPainter.width / 2, -15));
     }
 
     // Center bright point

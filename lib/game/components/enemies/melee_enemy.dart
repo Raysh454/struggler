@@ -53,8 +53,11 @@ abstract class MeleeEnemy extends BaseEnemy {
 
   @override
   Future<void> onLoad() async {
-    _patrolOriginX = position.x;
     await super.onLoad();
+    // Set patrol origin AFTER super.onLoad() runs _teleportToSafeGround(),
+    // so the patrol center is the safe, snapped position — not the original
+    // potentially-floating spawn point.
+    _patrolOriginX = position.x;
   }
 
   @override
@@ -238,6 +241,7 @@ abstract class MeleeEnemy extends BaseEnemy {
         } else {
           // Reward perfect dodge if invincible during the actual hit frame!
           game.playerState.perfectDodges++;
+          game.playerState.perfectDodgesThisLevel++;
           game.playerState.addResolve(5);
         }
       }

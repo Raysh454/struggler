@@ -48,6 +48,7 @@ abstract class BaseEnemy extends PositionComponent
   double _ignorePlatformsTimer = 0.0;
   double _staggerVelocityX = 0.0;
   bool get isAttackingState => false;
+  bool _isFirstUpdate = true;
 
   // --- Animation slot (set by subclass in onLoad) ---
   PositionComponent? animComp;
@@ -76,16 +77,108 @@ abstract class BaseEnemy extends PositionComponent
       contactDamage *= customDamageMult;
       health *= customHealthMult;
     }
+
+    if (runtimeType.toString() != 'ArchitectBoss') {
+      _teleportToSafeGround();
+    }
+  }
+
+  /// Finds the nearest safe solid tile below or around the enemy and snaps them to it
+  void _teleportToSafeGround() {
+    final grid = game.activeGrid;
+    if (grid == null) return;
+
+    final gx = (position.x / GameConfig.tileSize).round();
+    final gy = (position.y / GameConfig.tileSize).round();
+
+    // Check if currently standing on perfectly safe solid ground (size-agnostic, foot-level check)
+    final footTileX = ((position.x + size.x / 2) / GameConfig.tileSize).floor();
+    final footTileY = ((position.y + size.y + 2.0) / GameConfig.tileSize)
+        .floor();
+    if (footTileX >= 0 &&
+        footTileX < grid.width &&
+        footTileY >= 0 &&
+        footTileY < grid.height) {
+      if (grid.isSolid(footTileX, footTileY) &&
+          !grid.isLava(footTileX, footTileY - 1)) {
+        return; // Already standing on perfectly safe ground!
+      }
+    }
+
+    int? foundGx;
+    int? foundGy;
+    int minDistanceSq = 999999;
+
+    // Search up to configured radius columns away left/right
+    for (int dx = 0; dx <= GameConfig.enemySafeGroundSearchRadius; dx++) {
+      final colsToCheck = dx == 0 ? [0] : [-dx, dx];
+      for (final offset in colsToCheck) {
+        final cx = gx + offset;
+        if (cx < 0 || cx >= grid.width) continue;
+
+        // Scan the entire height of the map in this column to find a solid surface
+        for (int cy = 1; cy < grid.height; cy++) {
+          if (grid.isSolid(cx, cy)) {
+            // Check if top space is safe/clear (not solid, not lava)
+            final above1 = cy - 1;
+            final above2 = cy - 2;
+
+            bool isSafe = true;
+            if (above1 >= 0) {
+              if (grid.isSolid(cx, above1) || grid.isLava(cx, above1)) {
+                isSafe = false;
+              }
+            }
+            if (above2 >= 0) {
+              if (grid.isSolid(cx, above2) || grid.isLava(cx, above2)) {
+                isSafe = false;
+              }
+            }
+
+            if (isSafe) {
+              // Calculate squared Manhattan distance to choose the closest safe spot
+              final distSq =
+                  (cx - gx) * (cx - gx) + (cy - 1 - gy) * (cy - 1 - gy);
+              if (distSq < minDistanceSq) {
+                minDistanceSq = distSq;
+                foundGx = cx;
+                foundGy = cy - 1;
+              }
+            }
+          }
+        }
+      }
+
+      // If we found a safe spot at the current search radius dx, stop expanding
+      if (foundGx != null && foundGy != null) {
+        break;
+      }
+    }
+
+    if (foundGx != null && foundGy != null) {
+      final newX =
+          foundGx * GameConfig.tileSize + (GameConfig.tileSize - size.x) / 2;
+      final newY =
+          foundGy * GameConfig.tileSize + (GameConfig.tileSize - size.y);
+      position.setValues(newX, newY);
+      velocityY = 0;
+      isOnGround = true;
+    }
   }
 
   @override
   void update(double dt) {
+    if (_isFirstUpdate) {
+      _isFirstUpdate = false;
+      if (runtimeType.toString() != 'ArchitectBoss') {
+        _teleportToSafeGround();
+      }
+    }
+
     super.update(dt);
 
     if (game.isCutscenePlaying) {
-      _applyGravity(dt);
       _flipSprite();
-      isOnGround = false;
       return;
     }
 
@@ -97,7 +190,7 @@ abstract class BaseEnemy extends PositionComponent
     if (_staggerVelocityX.abs() > 0.01) {
       final step = _staggerVelocityX * dt;
       position.x += step;
-      _staggerVelocityX *= 0.82; // Decelerate quickly
+      _staggerVelocityX *= GameConfig.enemyStaggerDeceleration;
     } else {
       _staggerVelocityX = 0.0;
     }
@@ -107,8 +200,8 @@ abstract class BaseEnemy extends PositionComponent
 
     // Fall into void = death
     final maxMapHeight = (game.activeGrid?.height ?? 20) * GameConfig.tileSize;
-    if (position.y > maxMapHeight + 128) {
-      takeDamage(maxHealth * 2.0); // Instantly vaporize in the void!
+    if (position.y > maxMapHeight + GameConfig.enemyVoidDeathBuffer) {
+      takeDamage(maxHealth * 2.0);
     }
 
     isOnGround = false; // reset; collision will set true
@@ -158,7 +251,8 @@ abstract class BaseEnemy extends PositionComponent
     bool hasLava = false;
     bool hasSolid = false;
 
-    for (int y = (gy - 1).clamp(0, grid.height - 1); y < grid.height; y++) {
+    final maxY = (gy + 2).clamp(0, grid.height - 1);
+    for (int y = (gy - 1).clamp(0, grid.height - 1); y <= maxY; y++) {
       if (grid.isLava(gx, y)) {
         hasLava = true;
       }
@@ -252,12 +346,6 @@ abstract class BaseEnemy extends PositionComponent
 
     if (block.isJumpThrough) {
       if (_ignorePlatformsTimer > 0) return;
-      final player = playerTarget;
-      if (player != null && player.position.y > position.y + size.y - 8.0) {
-        _ignorePlatformsTimer = 0.25;
-        isOnGround = false;
-        return;
-      }
       if (minOverlap == overlapTop &&
           velocityY >= 0 &&
           overlapTop <= size.y * 0.5) {

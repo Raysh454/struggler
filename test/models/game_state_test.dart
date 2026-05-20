@@ -10,9 +10,9 @@ void main() {
     });
 
     group('initialization', () {
-      test('starts at level 1 with 20 max levels', () {
-        expect(state.currentLevel, 1);
-        expect(state.maxLevels, 20);
+      test('starts at level 0 with 10 max levels', () {
+        expect(state.currentLevel, 0);
+        expect(state.maxLevels, 10);
         expect(state.isPaused, false);
       });
 
@@ -28,32 +28,37 @@ void main() {
     });
 
     group('narrativeArc', () {
-      test('levels 1-5 are awakening', () {
-        for (int i = 1; i <= 5; i++) {
+      test('level 0 is tutorial', () {
+        state.currentLevel = 0;
+        expect(state.narrativeArc, 'tutorial');
+      });
+
+      test('levels 1-3 are awakening', () {
+        for (int i = 1; i <= 3; i++) {
           state.currentLevel = i;
           expect(state.narrativeArc, 'awakening',
               reason: 'Level $i should be awakening');
         }
       });
 
-      test('levels 6-14 are realization', () {
-        for (int i = 6; i <= 14; i++) {
+      test('levels 4-7 are realization', () {
+        for (int i = 4; i <= 7; i++) {
           state.currentLevel = i;
           expect(state.narrativeArc, 'realization',
               reason: 'Level $i should be realization');
         }
       });
 
-      test('levels 15-20 are confrontation', () {
-        for (int i = 15; i <= 20; i++) {
+      test('levels 8-10 are confrontation', () {
+        for (int i = 8; i <= 10; i++) {
           state.currentLevel = i;
           expect(state.narrativeArc, 'confrontation',
               reason: 'Level $i should be confrontation');
         }
       });
 
-      test('levels beyond 20 are endless', () {
-        state.currentLevel = 21;
+      test('levels beyond 10 are endless', () {
+        state.currentLevel = 11;
         expect(state.narrativeArc, 'endless');
         state.currentLevel = 50;
         expect(state.narrativeArc, 'endless');
@@ -61,8 +66,8 @@ void main() {
     });
 
     group('hasFixedDialogue', () {
-      test('fixed dialogues at levels 1, 5, 10, 15, 20', () {
-        for (final level in [1, 5, 10, 15, 20]) {
+      test('fixed dialogues at levels 1, 3, 5, 7, 10', () {
+        for (final level in [1, 3, 5, 7, 10]) {
           state.currentLevel = level;
           expect(state.hasFixedDialogue, true,
               reason: 'Level $level should have fixed dialogue');
@@ -70,7 +75,7 @@ void main() {
       });
 
       test('no fixed dialogue at other levels', () {
-        for (final level in [2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19]) {
+        for (final level in [0, 2, 4, 6, 8, 9, 11, 12, 13, 14, 15, 16]) {
           state.currentLevel = level;
           expect(state.hasFixedDialogue, false,
               reason: 'Level $level should NOT have fixed dialogue');
@@ -90,7 +95,7 @@ void main() {
         // Small delay isn't needed — any duration will be recorded
         final elapsed = state.completeLevel();
         expect(elapsed, greaterThanOrEqualTo(0));
-        expect(state.currentLevel, 2);
+        expect(state.currentLevel, 1);
         expect(state.levelCompletionTimes, hasLength(1));
         expect(state.levelStartTime, isNull); // Reset after completion
       });
@@ -98,7 +103,7 @@ void main() {
       test('completeLevel returns 0 if startLevel was not called', () {
         final elapsed = state.completeLevel();
         expect(elapsed, 0.0);
-        expect(state.currentLevel, 2);
+        expect(state.currentLevel, 1);
       });
 
       test('multiple completions accumulate times', () {
@@ -108,8 +113,23 @@ void main() {
         state.completeLevel();
         state.startLevel();
         state.completeLevel();
-        expect(state.currentLevel, 4);
+        expect(state.currentLevel, 3);
         expect(state.levelCompletionTimes, hasLength(3));
+      });
+    });
+
+    group('reset', () {
+      test('resets currentLevel to 0 and clears completions and start time', () {
+        state.currentLevel = 5;
+        state.startLevel();
+        state.completeLevel();
+        state.startLevel();
+
+        state.reset();
+
+        expect(state.currentLevel, 0);
+        expect(state.levelStartTime, isNull);
+        expect(state.levelCompletionTimes, isEmpty);
       });
     });
   });

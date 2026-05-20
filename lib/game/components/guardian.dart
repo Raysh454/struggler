@@ -63,9 +63,9 @@ class Guardian extends PositionComponent
     super.update(dt);
     _animationTimer += dt;
 
-    if (_spriteLoaded) {
-      final player = game.world.children.whereType<Player>().firstOrNull;
-      if (player != null) {
+    final player = game.world.children.whereType<Player>().firstOrNull;
+    if (player != null) {
+      if (_spriteLoaded) {
         final playerCenterX = player.position.x + player.size.x / 2;
         final myCenterX = position.x + size.x / 2;
 
@@ -78,6 +78,26 @@ class Guardian extends PositionComponent
           // Player is to the right: make scale.x positive to face right
           if (_animGroup.scale.x < 0) {
             _animGroup.scale.x = _animGroup.scale.x.abs();
+          }
+        }
+      }
+
+      // Check overlap mathematically to avoid Flame boundary-only collision bugs when centered
+      final interactionRect = Rect.fromCenter(
+        center: Offset(position.x + size.x / 2, position.y + size.y / 2),
+        width: 80.0, // Generous width for comfortable interaction
+        height: size.y,
+      );
+      final playerRect = player.toRect();
+      final isOverlapping = interactionRect.overlaps(playerRect);
+
+      if (isOverlapping != playerOverlapping) {
+        playerOverlapping = isOverlapping;
+        if (isOverlapping) {
+          player.currentGuardian = this;
+        } else {
+          if (player.currentGuardian == this) {
+            player.currentGuardian = null;
           }
         }
       }
@@ -199,26 +219,4 @@ class Guardian extends PositionComponent
     }
   }
 
-  @override
-  void onCollisionStart(
-    Set<Vector2> intersectionPoints,
-    PositionComponent other,
-  ) {
-    super.onCollisionStart(intersectionPoints, other);
-    if (other is Player) {
-      playerOverlapping = true;
-      other.currentGuardian = this;
-    }
-  }
-
-  @override
-  void onCollisionEnd(PositionComponent other) {
-    super.onCollisionEnd(other);
-    if (other is Player) {
-      playerOverlapping = false;
-      if (other.currentGuardian == this) {
-        other.currentGuardian = null;
-      }
-    }
-  }
 }

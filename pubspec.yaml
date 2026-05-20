@@ -11,6 +11,8 @@ dependencies:
   flutter:
     sdk: flutter
   google_generative_ai: ^0.4.7
+  googleapis_auth: ^1.6.0
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:
@@ -39,3 +41,11 @@ flutter:
     - assets/images/characters/bringer/IndividualSprite/Spell/
     - assets/images/characters/guardian/
     - assets/images/characters/hope/
+
+  fonts:
+    - family: Gotfridus
+      fonts:
+        - asset: assets/fonts/Gotfridus/Gotfridus.ttf
+    - family: DungeonFont
+      fonts:
+        - asset: assets/fonts/DungeonFont/DungeonFont.ttf

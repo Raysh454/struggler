@@ -21,21 +21,20 @@ class BringerEnemy extends MeleeEnemy {
   double _castTimer = 0;
   static const double _castDuration = 0.9; // matches 9-frame cast anim
 
-  BringerEnemy({
-    required super.position,
-  }) : super(
-          size: GameConfig.enemyHitboxBringer,
-          maxHealth: GameConfig.enemyHealthBringer,
-          contactDamage: GameConfig.enemyDamageBringer,
-          speed: GameConfig.enemySpeedBringer,
-          patrolRange: 80,
-          attackCooldown: 1.5,
-          aggroRange: GameConfig.enemyAggroRangeBringer,
-          damageDelay: 0.30,
-          attackRange: GameConfig.enemyAttackRangeBringer,
-          maxVerticalDiff: GameConfig.enemyAttackMaxVerticalDiffBringer,
-          attackAnimDuration: 0.70,
-        );
+  BringerEnemy({required super.position})
+    : super(
+        size: GameConfig.enemyHitboxBringer,
+        maxHealth: GameConfig.enemyHealthBringer,
+        contactDamage: GameConfig.enemyDamageBringer,
+        speed: GameConfig.enemySpeedBringer,
+        patrolRange: 80,
+        attackCooldown: 1.5,
+        aggroRange: GameConfig.enemyAggroRangeBringer,
+        damageDelay: 0.30,
+        attackRange: GameConfig.enemyAttackRangeBringer,
+        maxVerticalDiff: GameConfig.enemyAttackMaxVerticalDiffBringer,
+        attackAnimDuration: 0.70,
+      );
 
   @override
   int get willpowerReward => GameConfig.enemyWillBringer;
@@ -59,21 +58,67 @@ class BringerEnemy extends MeleeEnemy {
   Future<void> onLoad() async {
     await super.onLoad();
     try {
-      final idle   = await AssetRegistry.getAnimationFromFrameSequence(game, '${_pfx}Idle/Bringer-of-Death_Idle_',   '.png', 8,  stepTime: 0.12, key: 'bringer/idle');
-      final walk   = await AssetRegistry.getAnimationFromFrameSequence(game, '${_pfx}Walk/Bringer-of-Death_Walk_',   '.png', 8,  stepTime: 0.10, key: 'bringer/walk');
-      final attack = await AssetRegistry.getAnimationFromFrameSequence(game, '${_pfx}Attack/Bringer-of-Death_Attack_','.png', 10, stepTime: 0.07, loop: false, key: 'bringer/atk');
-      final cast   = await AssetRegistry.getAnimationFromFrameSequence(game, '${_pfx}Cast/Bringer-of-Death_Cast_',   '.png', 9,  stepTime: 0.10, loop: false, key: 'bringer/cast');
-      final hurt   = await AssetRegistry.getAnimationFromFrameSequence(game, '${_pfx}Hurt/Bringer-of-Death_Hurt_',   '.png', 3,  stepTime: 0.10, loop: false, key: 'bringer/hurt');
-      final death  = await AssetRegistry.getAnimationFromFrameSequence(game, '${_pfx}Death/Bringer-of-Death_Death_', '.png', 10, stepTime: 0.10, loop: false, key: 'bringer/death');
+      final idle = await AssetRegistry.getAnimationFromFrameSequence(
+        game,
+        '${_pfx}Idle/Bringer-of-Death_Idle_',
+        '.png',
+        8,
+        stepTime: 0.12,
+        key: 'bringer/idle',
+      );
+      final walk = await AssetRegistry.getAnimationFromFrameSequence(
+        game,
+        '${_pfx}Walk/Bringer-of-Death_Walk_',
+        '.png',
+        8,
+        stepTime: 0.10,
+        key: 'bringer/walk',
+      );
+      final attack = await AssetRegistry.getAnimationFromFrameSequence(
+        game,
+        '${_pfx}Attack/Bringer-of-Death_Attack_',
+        '.png',
+        10,
+        stepTime: 0.07,
+        loop: false,
+        key: 'bringer/atk',
+      );
+      final cast = await AssetRegistry.getAnimationFromFrameSequence(
+        game,
+        '${_pfx}Cast/Bringer-of-Death_Cast_',
+        '.png',
+        9,
+        stepTime: 0.10,
+        loop: false,
+        key: 'bringer/cast',
+      );
+      final hurt = await AssetRegistry.getAnimationFromFrameSequence(
+        game,
+        '${_pfx}Hurt/Bringer-of-Death_Hurt_',
+        '.png',
+        3,
+        stepTime: 0.10,
+        loop: false,
+        key: 'bringer/hurt',
+      );
+      final death = await AssetRegistry.getAnimationFromFrameSequence(
+        game,
+        '${_pfx}Death/Bringer-of-Death_Death_',
+        '.png',
+        10,
+        stepTime: 0.10,
+        loop: false,
+        key: 'bringer/death',
+      );
 
       _animGroup = SpriteAnimationGroupComponent<_BAnim>(
         animations: {
-          _BAnim.idle:   idle,
-          _BAnim.walk:   walk,
+          _BAnim.idle: idle,
+          _BAnim.walk: walk,
           _BAnim.attack: attack,
-          _BAnim.cast:   cast,
-          _BAnim.hurt:   hurt,
-          _BAnim.death:  death,
+          _BAnim.cast: cast,
+          _BAnim.hurt: hurt,
+          _BAnim.death: death,
         },
         current: _BAnim.idle,
         size: _renderSize,
@@ -101,6 +146,7 @@ class BringerEnemy extends MeleeEnemy {
 
   @override
   void interruptAttack() {
+    super.interruptAttack();
     _casting = false;
     _castTimer = 0.0;
     _spellTimer = GameConfig.bringerSpellInterval;
@@ -117,14 +163,19 @@ class BringerEnemy extends MeleeEnemy {
         _animGroup!.current = _BAnim.hurt;
         _animGroup!.animationTickers?[_BAnim.hurt]?.reset();
       }
-      
+
       // Set Bringer stagger duration to configured duration!
       hurtTimer = GameConfig.enemyBringerHurtDuration;
 
       final player = playerTarget;
       if (player != null) {
-        final pushDir = (position.x + size.x / 2) > (player.position.x + player.size.x / 2) ? 1.0 : -1.0;
-        stagger(pushDir * GameConfig.enemyBringerStaggerForce); // Heavy physical pushback
+        final pushDir =
+            (position.x + size.x / 2) > (player.position.x + player.size.x / 2)
+            ? 1.0
+            : -1.0;
+        stagger(
+          pushDir * GameConfig.enemyBringerStaggerForce,
+        ); // Heavy physical pushback
       }
     }
     return fatal;
@@ -137,7 +188,7 @@ class BringerEnemy extends MeleeEnemy {
 
     if (!_spriteLoaded) return;
 
-    // Hurt lock: keep Bringer in hurt/stagger pose and lock AI for the full 0.6s hurtTimer!
+    // Hurt lock: keep Bringer in hurt/stagger pose and lock AI for the full hurtTimer!
     if (_current == _BAnim.hurt) {
       if (hurtTimer > 0) {
         return; // Lock AI and hold hurt animation
@@ -172,7 +223,7 @@ class BringerEnemy extends MeleeEnemy {
     if (_current != _BAnim.attack) {
       final newAnim = switch (currentState) {
         MeleeState.patrol => _BAnim.walk,
-        MeleeState.chase  => isStationary ? _BAnim.idle : _BAnim.walk,
+        MeleeState.chase => isStationary ? _BAnim.idle : _BAnim.walk,
         MeleeState.attack => _BAnim.idle,
       };
       if (newAnim != _current && !_casting) {
@@ -194,7 +245,7 @@ class BringerEnemy extends MeleeEnemy {
       return;
     }
 
-    _casting   = true;
+    _casting = true;
     _castTimer = _castDuration;
 
     if (_spriteLoaded) {
@@ -205,12 +256,18 @@ class BringerEnemy extends MeleeEnemy {
 
     // Spawn thunder hand above player
     try {
-      parent?.add(ThunderHandProjectile(
-        position: Vector2(
-          p.position.x + p.size.x / 2 - GameConfig.thunderHandSize.x / 2, // Centered horizontally
-          p.position.y + GameConfig.thunderHandYOffset,                  // Positioned by dynamic config offset!
+      parent?.add(
+        ThunderHandProjectile(
+          position: Vector2(
+            p.position.x +
+                p.size.x / 2 -
+                GameConfig.thunderHandSize.x / 2, // Centered horizontally
+            p.position.y +
+                GameConfig
+                    .thunderHandYOffset, // Positioned by dynamic config offset!
+          ),
         ),
-      ));
+      );
     } catch (_) {}
   }
 
@@ -218,7 +275,10 @@ class BringerEnemy extends MeleeEnemy {
   void onDeath() {
     if (_spriteLoaded) {
       _animGroup!.current = _BAnim.death;
-      Future.delayed(const Duration(milliseconds: 1000), () => removeFromParent());
+      Future.delayed(
+        const Duration(milliseconds: 1000),
+        () => removeFromParent(),
+      );
     } else {
       removeFromParent();
     }

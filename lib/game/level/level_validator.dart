@@ -51,6 +51,9 @@ class LevelValidator {
       tiles = _ensureLavaContainment(tiles, data.width, data.height);
       
       enemies = _sanitizeEnemies(enemies, tiles, data.width, data.height);
+      if (data.levelId != -1) {
+        enemies = _ensureMinEnemies(enemies, tiles, data.spawn, data.width, data.height);
+      }
       pickups = _sanitizePickups(pickups, tiles, data.width, data.height);
 
       // Phase 2: Spawn/Exit Safety
@@ -58,6 +61,7 @@ class LevelValidator {
       final exit = data.exit;
       tiles = _ensureSpawnSafety(tiles, spawn, data.width, data.height);
       tiles = _ensureExitSafety(tiles, exit, data.width, data.height);
+      tiles = _carveOutPortalSpaces(tiles, spawn, exit);
 
       // Phase 3: Reachability — BFS and auto-bridge
       for (int attempt = 0; attempt < maxRepairIterations; attempt++) {
@@ -84,8 +88,9 @@ class LevelValidator {
         final reachable = _bfsReachability(surfaces, spawnSurface, grid);
 
         if (reachable.contains(exitSurface)) {
-          // Level is solvable!
+          // Level is solvable! Add visibility bridges before returning.
           _log('[LevelValidator] Success: Level is solvable after $attempt repair iterations.');
+          tiles = _addVisibilityBridges(tiles, surfaces, spawnSurface, exitSurface, grid, data.width, data.height);
           return data._copyWith(tiles: tiles, enemies: enemies, pickups: pickups);
         }
 
@@ -109,6 +114,7 @@ class LevelValidator {
         final reachable = _bfsReachability(surfaces, spawnSurface, grid);
         if (reachable.contains(exitSurface)) {
           _log('[LevelValidator] Success: Level was repaired successfully and is now solvable.');
+          tiles = _addVisibilityBridges(tiles, surfaces, spawnSurface, exitSurface, grid, data.width, data.height);
           return data._copyWith(tiles: tiles, enemies: enemies, pickups: pickups);
         }
       }
@@ -152,8 +158,9 @@ class LevelValidator {
         // tile directly beneath them AND it is not touching the map floor.
         if (tile.type == 'block') {
           final bottomRow = (tile.y + tile.h).round();
-          // Floor tile or underground — always keep as solid block.
-          if (bottomRow >= mapHeight) {
+          // Floor tile, underground, or near the map floor — always keep as solid block.
+          // A block within 3 tiles of the map bottom is considered grounded (not floating).
+          if (bottomRow >= mapHeight - 3) {
             sanitized.add(tile);
             continue;
           }
@@ -421,54 +428,45 @@ class LevelValidator {
   static List<EnemyData> _sanitizeEnemies(
       List<EnemyData> enemies, List<TileData> tiles, int w, int h) {
     final grid = _buildGrid(tiles, w, h);
+    final surfaces = _findSurfaces(grid, w, h);
     final sanitized = <EnemyData>[];
 
     for (final enemy in enemies) {
+      if (enemy.type.toLowerCase() == 'architectboss') {
+        sanitized.add(enemy);
+        continue;
+      }
+
       final ex = enemy.x.round();
-      // Enemy sprite is ~2 tiles tall — check from foot position
-      final ey = enemy.y.round() + 1;
+      final ey = enemy.y.round();
 
-      if (ey >= 0 && ey < h + 10 && ex >= 0 && ex < w + 10) {
-        // --- Spike overlap check ---
-        final enemyTileY = enemy.y.round();
-        if (enemyTileY >= 0 && enemyTileY < grid.length && ex < grid[0].length) {
-          if (grid[enemyTileY][ex] == 'spike' ||
-              (ey < grid.length && ex < grid[0].length && grid[ey][ex] == 'spike')) {
-            _log('[LevelValidator] Removed enemy at (${enemy.x}, ${enemy.y}) — spawns inside spike');
-            continue;
-          }
-        }
+      if (surfaces.isEmpty) {
+        _log('[LevelValidator] No solid surfaces found in map to place enemy at (${enemy.x}, ${enemy.y})');
+        continue;
+      }
 
-        // --- Ground check (within 3 tiles below) ---
-        bool hasGround = false;
-        for (int checkY = ey; checkY < min(ey + 3, h + 10); checkY++) {
-          if (checkY >= 0 && checkY < grid.length && ex < grid[0].length &&
-              (grid[checkY][ex] == 'block' || grid[checkY][ex] == 'platform')) {
-            hasGround = true;
-            break;
-          }
-        }
+      final nearest = _findNearestSurface(surfaces, ex, ey);
+      if (nearest != null) {
+        // Snap the enemy horizontally to the surface bounds and vertically stand on it
+        final double snappedX = enemy.x.clamp(nearest.startX.toDouble(), nearest.endX.toDouble());
+        final double snappedY = (nearest.y - 2).toDouble();
 
-        if (!hasGround) {
-          _log('[LevelValidator] Removed floating enemy at (${enemy.x}, ${enemy.y})');
-          continue;
-        }
-
-        // --- Enforce minimum patrol range so enemies can always aggro ---
+        // Enforce minimum patrol range so they can always aggro
         final safePatrol = max(enemy.patrolRange, _minEnemyPatrolRange);
-        if (safePatrol != enemy.patrolRange) {
-          _log('[LevelValidator] Expanded patrol range for enemy at (${enemy.x}, ${enemy.y}) from ${enemy.patrolRange} to $safePatrol');
-          sanitized.add(EnemyData(
-            x: enemy.x, y: enemy.y,
-            health: enemy.health, damage: enemy.damage,
-            speed: enemy.speed, type: enemy.type,
-            patrolRange: safePatrol,
-          ));
-        } else {
-          sanitized.add(enemy);
-        }
+
+        _log('[LevelValidator] Teleported enemy (${enemy.type}) from (${enemy.x}, ${enemy.y}) to safe ground at ($snappedX, $snappedY)');
+
+        sanitized.add(EnemyData(
+          x: snappedX,
+          y: snappedY,
+          health: enemy.health,
+          damage: enemy.damage,
+          speed: enemy.speed,
+          type: enemy.type,
+          patrolRange: safePatrol,
+        ));
       } else {
-        sanitized.add(enemy); // Out of bounds — keep it, game will handle
+        _log('[LevelValidator] No safe surface found near enemy at (${enemy.x}, ${enemy.y}), removing.');
       }
     }
     return sanitized;
@@ -507,10 +505,57 @@ class LevelValidator {
   }
 
   // ========================================================================
+  // PHASE 1.7: Minimum Enemy Enforcement
+  // ========================================================================
+
+  /// Ensure at least [GameConfig.minEnemiesPerLevel] enemies exist.
+  /// Adds skeleton enemies on solid surfaces if needed.
+  static List<EnemyData> _ensureMinEnemies(
+    List<EnemyData> enemies,
+    List<TileData> tiles,
+    ({double x, double y}) spawn,
+    int w,
+    int h,
+  ) {
+    final minCount = GameConfig.minEnemiesPerLevel;
+    if (enemies.length >= minCount) return enemies;
+
+    final result = List<EnemyData>.from(enemies);
+    final grid = _buildGrid(tiles, w, h);
+
+    // Find surfaces to place filler enemies on
+    final surfaces = _findSurfaces(grid, w, h);
+    if (surfaces.isEmpty) return result;
+
+    // Sort surfaces by distance from spawn (place enemies further away first)
+    final spawnX = spawn.x.round();
+    surfaces.sort((a, b) {
+      final aMidX = (a.startX + a.endX) ~/ 2;
+      final bMidX = (b.startX + b.endX) ~/ 2;
+      return (bMidX - spawnX).abs().compareTo((aMidX - spawnX).abs());
+    });
+
+    for (final surface in surfaces) {
+      if (result.length >= minCount) break;
+      final ex = ((surface.startX + surface.endX) ~/ 2).toDouble();
+      final ey = (surface.y - 1).toDouble(); // Stand on top of the surface
+
+      // Don't place too close to spawn
+      if ((ex - spawn.x).abs() < 5 && (ey - spawn.y).abs() < 5) continue;
+
+      result.add(EnemyData(x: ex, y: ey, type: 'skeleton', patrolRange: 64.0));
+      _log('[LevelValidator] Added filler skeleton enemy at ($ex, $ey) to meet minimum ($minCount)');
+    }
+
+    return result;
+  }
+
+  // ========================================================================
   // PHASE 2: Spawn/Exit Safety
   // ========================================================================
 
-  /// Ensure spawn area is free of hazards and has ground below.
+  /// Ensure spawn area is free of hazards, has ground below, and no
+  /// impassable blocks directly above that would trap the player.
   static List<TileData> _ensureSpawnSafety(
       List<TileData> tiles, ({double x, double y}) spawn, int w, int h) {
     final sx = spawn.x.round();
@@ -533,6 +578,26 @@ class LevelValidator {
           continue; // Remove hazard near spawn
         }
       }
+
+      // Convert BLOCKs directly above spawn to PLATFORMs so player can jump through
+      if (tile.type == 'block') {
+        final tileStartX = tile.x.round();
+        final tileEndX = (tile.x + tile.w).round();
+        final tileStartY = tile.y.round();
+        final tileEndY = (tile.y + tile.h).round();
+
+        // Check if this block overlaps the spawn vertical column within safe radius height above
+        if (tileStartX <= sx + 1 && tileEndX >= sx &&
+            tileStartY < sy && tileEndY > sy - spawnSafeRadius - 2) {
+          _log('[LevelValidator] Converted BLOCK above spawn at (${tile.x}, ${tile.y}) to PLATFORM');
+          result.add(TileData(
+            type: 'platform',
+            x: tile.x, y: tile.y, w: tile.w, h: tile.h,
+          ));
+          continue;
+        }
+      }
+
       result.add(tile);
     }
 
@@ -576,6 +641,85 @@ class LevelValidator {
     if (!hasExitGround) {
       result.add(TileData(type: 'block', x: (ex - 1).toDouble(), y: (ey + 1).toDouble(), w: 4, h: 1));
       _log('[LevelValidator] Added exit platform at (${ex - 1}, ${ey + 1})');
+    }
+
+    return result;
+  }
+
+  /// Clear any solid blocks/platforms directly enclosing the spawn, guardian portal, or exit portal
+  static List<TileData> _carveOutPortalSpaces(
+      List<TileData> tiles, ({double x, double y}) spawn, ({double x, double y}) exit) {
+    final clearCells = <(int, int)>{};
+
+    final sx = spawn.x.round();
+    final sy = spawn.y.round();
+    // Clear 3-tile high space for player spawn
+    for (int y = sy - 2; y <= sy; y++) {
+      clearCells.add((sx, y));
+      clearCells.add((sx - 1, y)); // left/right breathing room
+      clearCells.add((sx + 1, y));
+    }
+
+    // Clear 3-tile high space for Guardian Portal (spawns at spawn.x + 2, spawn.y - 0.5)
+    final gpx = sx + 2;
+    for (int y = sy - 2; y <= sy; y++) {
+      clearCells.add((gpx, y));
+      clearCells.add((gpx - 1, y));
+      clearCells.add((gpx + 1, y));
+    }
+
+    // Clear 3-tile high space for Exit Portal
+    final ex = exit.x.round();
+    final ey = exit.y.round();
+    for (int y = ey - 2; y <= ey; y++) {
+      clearCells.add((ex, y));
+      clearCells.add((ex - 1, y));
+      clearCells.add((ex + 1, y));
+    }
+
+    final result = <TileData>[];
+    for (final tile in tiles) {
+      if (tile.type != 'block' && tile.type != 'platform') {
+        result.add(tile);
+        continue;
+      }
+
+      // Check if this tile intersects with any clear cell
+      bool intersects = false;
+      final startX = tile.x.round();
+      final startY = tile.y.round();
+      final endX = (tile.x + tile.w).round();
+      final endY = (tile.y + tile.h).round();
+
+      for (int cy = startY; cy < endY; cy++) {
+        for (int cx = startX; cx < endX; cx++) {
+          if (clearCells.contains((cx, cy))) {
+            intersects = true;
+            break;
+          }
+        }
+        if (intersects) break;
+      }
+
+      if (!intersects) {
+        result.add(tile);
+      } else {
+        // Decompose the intersecting tile into 1x1 sub-tiles, omitting clear cells
+        _log('[LevelValidator] Carving portal space by decomposing tile at (${tile.x}, ${tile.y}, w: ${tile.w}, h: ${tile.h})');
+        for (int cy = startY; cy < endY; cy++) {
+          for (int cx = startX; cx < endX; cx++) {
+            if (!clearCells.contains((cx, cy))) {
+              result.add(TileData(
+                type: tile.type,
+                x: cx.toDouble(),
+                y: cy.toDouble(),
+                w: 1,
+                h: 1,
+              ));
+            }
+          }
+        }
+      }
     }
 
     return result;
@@ -828,6 +972,115 @@ class LevelValidator {
     }
 
     return bridges;
+  }
+
+  // ========================================================================
+  // PHASE 4: Visibility Bridging
+  // ========================================================================
+
+  /// After confirming the level is solvable, trace the BFS path from spawn
+  /// to exit. For every pair of consecutive surfaces along that path where
+  /// the gap exceeds [GameConfig.validatorMaxVisibleGap], insert a small
+  /// jump-through platform so the next landing zone is always visible on
+  /// screen at 2x zoom.
+  static List<TileData> _addVisibilityBridges(
+    List<TileData> tiles,
+    List<_Surface> surfaces,
+    _Surface spawnSurface,
+    _Surface exitSurface,
+    List<List<String?>> grid,
+    int mapWidth,
+    int mapHeight,
+  ) {
+    final path = _bfsPath(surfaces, spawnSurface, exitSurface, grid);
+    if (path.length < 2) return tiles;
+
+    final result = List<TileData>.from(tiles);
+    final maxGap = GameConfig.validatorMaxVisibleGap;
+
+    for (int i = 0; i < path.length - 1; i++) {
+      final a = path[i];
+      final b = path[i + 1];
+
+      // Closest edges
+      final int horizGap;
+      if (b.startX > a.endX) {
+        horizGap = b.startX - a.endX - 1;
+      } else if (a.startX > b.endX) {
+        horizGap = a.startX - b.endX - 1;
+      } else {
+        horizGap = 0;
+      }
+      final vertGap = (a.y - b.y).abs();
+
+      // If either axis gap exceeds the visible threshold, add bridge(s)
+      if (horizGap > maxGap || vertGap > maxGap) {
+        final numBridges = max(
+          (horizGap / maxGap).ceil(),
+          (vertGap / maxGap).ceil(),
+        );
+
+        final aMidX = (a.startX + a.endX) ~/ 2;
+        final bMidX = (b.startX + b.endX) ~/ 2;
+
+        for (int j = 1; j <= numBridges; j++) {
+          final fraction = j / (numBridges + 1);
+          final bx = aMidX + ((bMidX - aMidX) * fraction).round();
+          final by = a.y + ((b.y - a.y) * fraction).round();
+
+          // Place above the calculated Y so the player stands on it
+          final clampedX = bx.clamp(0, mapWidth - 3);
+          final clampedY = by.clamp(1, mapHeight - 1);
+
+          result.add(TileData(
+            type: 'platform',
+            x: clampedX.toDouble(),
+            y: clampedY.toDouble(),
+            w: 3,
+            h: 1,
+          ));
+          _log('[LevelValidator] Added visibility bridge platform at ($clampedX, $clampedY) between surfaces');
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /// BFS that records parent pointers so we can reconstruct the shortest
+  /// path from [start] to [target] through the surface graph.
+  static List<_Surface> _bfsPath(
+    List<_Surface> surfaces,
+    _Surface start,
+    _Surface target,
+    List<List<String?>> grid,
+  ) {
+    final parent = <_Surface, _Surface?>{};
+    parent[start] = null;
+    final queue = <_Surface>[start];
+
+    while (queue.isNotEmpty) {
+      final current = queue.removeAt(0);
+      if (current == target) break;
+
+      for (final other in surfaces) {
+        if (parent.containsKey(other)) continue;
+        if (_canReach(current, other, grid)) {
+          parent[other] = current;
+          queue.add(other);
+        }
+      }
+    }
+
+    // Reconstruct path
+    if (!parent.containsKey(target)) return [];
+    final path = <_Surface>[];
+    _Surface? node = target;
+    while (node != null) {
+      path.add(node);
+      node = parent[node];
+    }
+    return path.reversed.toList();
   }
 
   // ========================================================================

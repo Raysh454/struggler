@@ -50,13 +50,13 @@ class TeleportEffect extends PositionComponent {
       final dx = cos(_angles[i]) * dist;
       final dy = sin(_angles[i]) * dist;
       final col = _colors[i];
+      final particleColor = col.withValues(alpha: col.a * alpha);
 
       canvas.drawCircle(
         origin + Offset(dx, dy),
         _sizes[i] * (1 - progress * 0.6),
         Paint()
-          ..color = Color.fromARGB(
-              (col.alpha * alpha).round(), col.red, col.green, col.blue)
+          ..color = particleColor
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
       );
     }
