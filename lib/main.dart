@@ -192,7 +192,7 @@ class _TouchControls extends StatelessWidget {
                       children: [
                         _ControlButton(
                           icon: Icons.whatshot,
-                          label: 'RESOLVE',
+                          label: 'INDOMITABLE',
                           onDown: () => game.player.activateIndomitable(),
                           color: const Color(0xFFFF9900),
                         ),
