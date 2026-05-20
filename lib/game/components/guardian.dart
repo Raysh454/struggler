@@ -113,7 +113,7 @@ class Guardian extends PositionComponent
     if (playerOverlapping) {
       final textPainter = TextPainter(
         text: const TextSpan(
-          text: 'E to Upgrade Stats',
+          text: 'Interact to Upgrade Stats',
           style: TextStyle(
             color: Color(0xFFFFFFFF),
             fontSize: 9,
@@ -218,5 +218,4 @@ class Guardian extends PositionComponent
       );
     }
   }
-
 }

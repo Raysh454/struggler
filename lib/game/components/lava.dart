@@ -30,7 +30,7 @@ class Lava extends PositionComponent with CollisionCallbacks, HasGameReference<S
   Future<void> onLoad() async {
     // Shrink hitbox slightly (forgiveness margin) so players don't die instantly 
     // when standing on the very edge of adjacent safe blocks.
-    add(RectangleHitbox(
+    await add(RectangleHitbox(
       position: Vector2(8, 12), // Inset 8px from left, 12px from top
       size: Vector2(size.x - 16, size.y - 12), // Shrink width by 16px, height by 12px
     ));

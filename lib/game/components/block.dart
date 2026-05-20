@@ -28,7 +28,7 @@ class PlatformBlock extends PositionComponent with CollisionCallbacks {
 
   @override
   Future<void> onLoad() async {
-    add(RectangleHitbox());
+    await add(RectangleHitbox());
     _buildCachedPicture();
     _spawnDecorations();
   }

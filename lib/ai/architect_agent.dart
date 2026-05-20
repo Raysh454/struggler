@@ -1,169 +1,45 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:googleapis_auth/auth_io.dart' as auth;
-import 'package:google_generative_ai/google_generative_ai.dart' as google_vertex;
+import 'package:http/http.dart' as http;
 import 'prompts.dart';
 
+/// The Antigravity Agent ("The Architect") — Core AI Orchestrator.
+///
+/// Communicates with Gemini via a Cloud Functions relay gateway to generate
+/// map layouts and dynamically tune difficulty based on player telemetry.
 class ArchitectAgent {
-  auth.AutoRefreshingAuthClient? _authClient;
-  String _projectId = 'struggler-496812';
-  final String _location = 'us-central1';
-  bool _useVertexAdc = false;
+  static const String _relayUrl =
+      'https://us-central1-struggler-496812.cloudfunctions.net/architect-relay';
 
-  // Fallback models when not using ADC
-  google_vertex.GenerativeModel? _fallbackMapModel;
-  google_vertex.GenerativeModel? _fallbackDifficultyModel;
-
-  Future<void>? _initFuture;
-
-  ArchitectAgent() {
-    _ensureInitialized();
-  }
-
-  Future<void> _ensureInitialized() {
-    _initFuture ??= _initAgent();
-    return _initFuture!;
-  }
-
-  Future<void> _initAgent() async {
-    final apiKey = Platform.environment['GEMINI_API_KEY'] ?? '';
-    if (apiKey.isNotEmpty) {
-      _useVertexAdc = false;
-      print('[ArchitectAgent] Found GEMINI_API_KEY in environment variables. Bypassing ADC and using standard Google Generative AI REST client.');
-      
-      _fallbackMapModel = google_vertex.GenerativeModel(
-        model: 'gemini-2.5-flash',
-        apiKey: apiKey,
-        systemInstruction: google_vertex.Content.system(architectMapPrompt),
-        generationConfig: google_vertex.GenerationConfig(responseMimeType: 'application/json'),
-        requestOptions: const google_vertex.RequestOptions(apiVersion: 'v1beta'),
-      );
-
-      _fallbackDifficultyModel = google_vertex.GenerativeModel(
-        model: 'gemini-2.5-flash',
-        apiKey: apiKey,
-        systemInstruction: google_vertex.Content.system(architectDifficultyPrompt),
-        generationConfig: google_vertex.GenerationConfig(responseMimeType: 'application/json'),
-        requestOptions: const google_vertex.RequestOptions(apiVersion: 'v1beta'),
-      );
-      return;
-    }
-
-    try {
-      // 1. Try to find the local project ID from gcloud credentials
-      _projectId = _getProjectId();
-      print('[ArchitectAgent] Found GCP Project ID: $_projectId');
-
-      // 2. Initialize ADC credentials
-      final scopes = ['https://www.googleapis.com/auth/cloud-platform'];
-      _authClient = await auth.clientViaApplicationDefaultCredentials(scopes: scopes);
-      _useVertexAdc = true;
-      print('[ArchitectAgent] Authenticated successfully with Application Default Credentials (ADC) via gcloud.');
-    } catch (e) {
-      _useVertexAdc = false;
-      print('[ArchitectAgent] ADC Authentication not available or failed: $e');
-      print('[ArchitectAgent] Falling back to standard Google Generative AI REST client...');
-      
-      _fallbackMapModel = google_vertex.GenerativeModel(
-        model: 'gemini-2.5-flash',
-        apiKey: apiKey,
-        systemInstruction: google_vertex.Content.system(architectMapPrompt),
-        generationConfig: google_vertex.GenerationConfig(responseMimeType: 'application/json'),
-        requestOptions: const google_vertex.RequestOptions(apiVersion: 'v1beta'),
-      );
-
-      _fallbackDifficultyModel = google_vertex.GenerativeModel(
-        model: 'gemini-2.5-flash',
-        apiKey: apiKey,
-        systemInstruction: google_vertex.Content.system(architectDifficultyPrompt),
-        generationConfig: google_vertex.GenerationConfig(responseMimeType: 'application/json'),
-        requestOptions: const google_vertex.RequestOptions(apiVersion: 'v1beta'),
-      );
-    }
-  }
-
-  /// Helper to dynamically parse project ID from the local ADC file.
-  String _getProjectId() {
-    // 1. Check GOOGLE_APPLICATION_CREDENTIALS environment variable
-    final envPath = Platform.environment['GOOGLE_APPLICATION_CREDENTIALS'];
-    if (envPath != null && envPath.isNotEmpty) {
-      try {
-        final file = File(envPath);
-        if (file.existsSync()) {
-          final json = jsonDecode(file.readAsStringSync());
-          if (json['project_id'] != null) return json['project_id'] as String;
-          if (json['quota_project_id'] != null) return json['quota_project_id'] as String;
-        }
-      } catch (_) {}
-    }
-
-    // 2. Check standard local paths for gcloud auth
-    final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '';
-    final paths = [
-      '$home/.config/gcloud/application_default_credentials.json',
-      '$home/AppData/Roaming/gcloud/application_default_credentials.json',
-    ];
-
-    for (final path in paths) {
-      try {
-        final file = File(path);
-        if (file.existsSync()) {
-          final json = jsonDecode(file.readAsStringSync());
-          if (json['project_id'] != null) return json['project_id'] as String;
-          if (json['quota_project_id'] != null) return json['quota_project_id'] as String;
-        }
-      } catch (_) {}
-    }
-
-    // Default fallback
-    return 'struggler-496812';
-  }
+  ArchitectAgent();
 
   /// Phase 1: Generate the map layout for the next level.
   Future<Map<String, dynamic>?> generateMapLayout(
     Map<String, dynamic> telemetry,
   ) async {
-    await _ensureInitialized();
-    final targetLevel = telemetry['targetLevel'] ?? 'unknown';
-    print('[ArchitectAgent] Dispatching MapLayout request to AI Architect for Level $targetLevel (Vertex ADC: $_useVertexAdc)...');
-    if (_useVertexAdc) {
-      return _generateVertexAdc(telemetry, architectMapPrompt, 'MapLayout');
-    } else {
-      return _generateFallback(_fallbackMapModel, telemetry, 'MapLayout');
-    }
+    return _generateViaRelay(telemetry, architectMapPrompt, 'MapLayout');
   }
 
   /// Phase 2: Generate difficulty tuning based on live current-level telemetry.
   Future<Map<String, dynamic>?> generateDifficulty(
     Map<String, dynamic> telemetry,
   ) async {
-    await _ensureInitialized();
-    final targetLevel = telemetry['targetLevel'] ?? 'unknown';
-    print('[ArchitectAgent] Dispatching Difficulty request to AI Architect for Level $targetLevel (Vertex ADC: $_useVertexAdc)...');
-    if (_useVertexAdc) {
-      return _generateVertexAdc(telemetry, architectDifficultyPrompt, 'Difficulty');
-    } else {
-      return _generateFallback(_fallbackDifficultyModel, telemetry, 'Difficulty');
-    }
+    return _generateViaRelay(telemetry, architectDifficultyPrompt, 'Difficulty');
   }
 
-  /// Vertex AI REST API call via Application Default Credentials (ADC)
-  Future<Map<String, dynamic>?> _generateVertexAdc(
+  // ═══════════════════════════════════════════════════════════════
+  // Relay Gateway Communication
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<Map<String, dynamic>?> _generateViaRelay(
     Map<String, dynamic> telemetry,
     String systemPrompt,
     String phase,
   ) async {
+    final targetLevel = telemetry['targetLevel'] ?? '?';
+    _logRequest(phase, targetLevel, telemetry);
+
     try {
-      if (_authClient == null) {
-        // Ensure initialized
-        await _initAgent();
-        if (_authClient == null) return null;
-      }
-
-      final url = Uri.parse(
-        'https://$_location-aiplatform.googleapis.com/v1/projects/$_projectId/locations/$_location/publishers/google/models/gemini-2.5-flash:generateContent',
-      );
-
       final requestBody = {
         'contents': [
           {
@@ -183,96 +59,239 @@ class ArchitectAgent {
         }
       };
 
-      final targetLevel = telemetry['targetLevel'] ?? 'unknown';
-      print('[ArchitectAgent] Sending Vertex ADC HTTP request for Level $targetLevel ($phase)...');
-      final response = await _authClient!.post(
-        url,
+      final response = await http.post(
+        Uri.parse(_relayUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestBody),
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Vertex AI REST call failed with status: ${response.statusCode}\nBody: ${response.body}');
+        _logError(phase, targetLevel,
+            'HTTP ${response.statusCode}: ${response.body.length > 200 ? response.body.substring(0, 200) : response.body}');
+        return null;
       }
 
       final responseBody = jsonDecode(response.body);
-      final text = responseBody['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+
+      // Extract text — handle both Vertex AI format and simplified relay format
+      String? text;
+      if (responseBody is Map) {
+        if (responseBody.containsKey('candidates')) {
+          text = responseBody['candidates']?[0]?['content']?['parts']?[0]
+              ?['text'] as String?;
+        } else if (responseBody.containsKey('text')) {
+          text = responseBody['text'] as String?;
+        }
+      }
+
       if (text == null) {
-        print('[ArchitectAgent] Received empty text response from Vertex ADC for Level $targetLevel ($phase).');
+        _logError(phase, targetLevel, 'Empty response from relay.');
         return null;
       }
-      print('[ArchitectAgent] Vertex ADC response received successfully for Level $targetLevel ($phase).');
 
-      final sanitizedText = _sanitizeJsonString(text);
-      final jsonResponse = jsonDecode(sanitizedText) as Map<String, dynamic>;
-
-      // Print the reasoning for visibility
-      if (jsonResponse.containsKey('reasoning')) {
-        final targetLevel = telemetry['targetLevel'] ?? 'unknown';
-        print(
-          '\n=== THE ARCHITECT REASONING ($phase for Level $targetLevel) ===\n${jsonResponse['reasoning']}\n===============================\n',
-        );
+      // Strip markdown code fences if the model wrapped its response
+      var cleanedText = text.trim();
+      if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replaceFirst(RegExp(r'^```\w*\n?'), '');
+        cleanedText = cleanedText.replaceFirst(RegExp(r'\n?```$'), '');
+        cleanedText = cleanedText.trim();
       }
+
+      // Strip JS-style // comments that the model sometimes injects
+      cleanedText = _stripJsonComments(cleanedText);
+
+      final sanitizedText = _sanitizeJsonString(cleanedText);
+      final decoded = jsonDecode(sanitizedText);
+
+      // Handle both Map and List (extract first element if array)
+      Map<String, dynamic> jsonResponse;
+      if (decoded is Map<String, dynamic>) {
+        jsonResponse = decoded;
+      } else if (decoded is List && decoded.isNotEmpty && decoded.first is Map) {
+        jsonResponse = Map<String, dynamic>.from(decoded.first as Map);
+      } else {
+        _logError(phase, targetLevel, 'Unexpected response type: ${decoded.runtimeType}');
+        return null;
+      }
+      // Debug: show what keys the AI actually returned
+      print('│  🔍 Response keys: ${jsonResponse.keys.toList()}');
+
+      _logResponse(phase, targetLevel, jsonResponse);
 
       // Fire-and-forget logging — synchronous writes, never blocks the game loop
       _logSync(telemetry, jsonResponse, phase);
 
       return jsonResponse;
     } catch (e) {
-      final targetLevel = telemetry['targetLevel'] ?? 'unknown';
-      print('[ArchitectAgent] Vertex ADC call failed for Level $targetLevel ($phase): $e');
-      // Attempt fallback if ADC failed dynamically
-      if (phase == 'MapLayout' && _fallbackMapModel != null) {
-        print('[ArchitectAgent] Attempting fallback model for Level $targetLevel ($phase)...');
-        return _generateFallback(_fallbackMapModel, telemetry, phase);
-      } else if (phase == 'Difficulty' && _fallbackDifficultyModel != null) {
-        print('[ArchitectAgent] Attempting fallback model for Level $targetLevel ($phase)...');
-        return _generateFallback(_fallbackDifficultyModel, telemetry, phase);
-      }
+      _logError(phase, targetLevel, '$e');
       return null;
     }
   }
 
-  /// Shared fallback generation logic using standard google_generative_ai REST client.
-  Future<Map<String, dynamic>?> _generateFallback(
-    google_vertex.GenerativeModel? model,
-    Map<String, dynamic> telemetry,
-    String phase,
-  ) async {
-    if (model == null) return null;
-    final targetLevel = telemetry['targetLevel'] ?? 'unknown';
-    print('[ArchitectAgent] Sending fallback REST API request for Level $targetLevel ($phase)...');
-    try {
-      final prompt = jsonEncode(telemetry);
-      final response = await model.generateContent([google_vertex.Content.text(prompt)]);
+  // ═══════════════════════════════════════════════════════════════
+  // Pretty Logging for Demo
+  // ═══════════════════════════════════════════════════════════════
 
-      final text = response.text;
-      if (text == null) {
-        print('[ArchitectAgent] Received empty text response from fallback REST client for Level $targetLevel ($phase).');
-        return null;
-      }
-      print('[ArchitectAgent] Fallback REST client response received successfully for Level $targetLevel ($phase).');
+  void _logRequest(
+      String phase, dynamic targetLevel, Map<String, dynamic> telemetry) {
+    final emoji = phase == 'MapLayout' ? '🗺️' : '⚡';
+    final gameProgress = telemetry['gameProgress'] as Map<String, dynamic>?;
+    final deaths = gameProgress?['totalDeaths'] ?? '?';
+    final gamePhase = gameProgress?['gamePhase'] ?? '?';
+    final diamonds = gameProgress?['diamondsCollected'] ?? '?';
 
-      final sanitizedText = _sanitizeJsonString(text);
-      final jsonResponse = jsonDecode(sanitizedText) as Map<String, dynamic>;
+    print('');
+    print(
+        '┌───────────────────────────────────────────────────────────');
+    print(
+        '│  $emoji  ANTIGRAVITY AGENT ─ $phase Request (Level $targetLevel)');
+    print(
+        '├───────────────────────────────────────────────────────────');
+    print('│  🎯 Target Level: $targetLevel');
+    print('│  💀 Total Deaths: $deaths  │  💎 Diamonds: $diamonds');
+    print('│  📖 Narrative Phase: $gamePhase');
 
-      // Print the reasoning for visibility
-      if (jsonResponse.containsKey('reasoning')) {
-        final targetLevel = telemetry['targetLevel'] ?? 'unknown';
+    // Show live performance stats for difficulty phase
+    if (phase == 'Difficulty') {
+      final perf =
+          telemetry['currentLevelPerformance'] as Map<String, dynamic>?;
+      if (perf != null) {
+        final hp = perf['healthPercent'] ?? '?';
+        final dodges = perf['perfectDodgesSoFar'] ?? '?';
+        final defeated = perf['enemiesDefeatedSoFar'] ?? '?';
+        final total = perf['totalEnemiesInLevel'] ?? '?';
+        final levelDeaths = perf['deathsThisLevel'] ?? '?';
         print(
-          '\n=== THE ARCHITECT REASONING ($phase for Level $targetLevel) ===\n${jsonResponse['reasoning']}\n===============================\n',
-        );
+            '│  ❤️  Health: $hp%  │  🛡️ Dodges: $dodges  │  ☠️ Deaths This Level: $levelDeaths');
+        print('│  ⚔️  Enemies Defeated: $defeated / $total');
       }
-
-      // Fire-and-forget logging — synchronous writes, never blocks the game loop
-      _logSync(telemetry, jsonResponse, phase);
-
-      return jsonResponse;
-    } catch (e) {
-      print('Architect Agent failed to generate $phase via Fallback API client: $e');
-      return null;
     }
+
+    print(
+        '│  🔗 Endpoint: Cloud Functions Relay Gateway');
+    print(
+        '└───────────────────────────────────────────────────────────');
+    print('');
   }
+
+  void _logResponse(
+      String phase, dynamic targetLevel, Map<String, dynamic> json) {
+    print('');
+    print(
+        '┌───────────────────────────────────────────────────────────');
+    print(
+        '│  ✅  ANTIGRAVITY AGENT ─ $phase Response (Level $targetLevel)');
+    print(
+        '├───────────────────────────────────────────────────────────');
+
+    if (phase == 'MapLayout') {
+      final bp = json['levelBlueprint'] as Map<String, dynamic>?;
+      final w = bp?['width'] ?? '?';
+      final h = bp?['height'] ?? '?';
+      final objects = bp?['objects'] as List<dynamic>? ?? [];
+      final enemies =
+          objects.where((o) => o['type'] == 'ENEMY').length;
+      final pickups =
+          objects.where((o) => o['type'] == 'PICKUP').length;
+      final tiles = bp?['tiles'] as List<dynamic>? ?? [];
+      print('│  📐 Blueprint: ${w}×${h} tiles (${tiles.length} tile regions)');
+      print('│  👾 Enemies Placed: $enemies  │  💊 Pickups: $pickups');
+    } else {
+      final diff = json['difficulty'] ?? '?';
+      final dmgMult = json['enemyDamageMultiplier'] ?? '?';
+      final hpMult = json['enemyHealthMultiplier'] ?? '?';
+      final dialogue = json['architectDialogue'] as String?;
+      print('│  ⚔️  Difficulty Decision: $diff');
+      print('│  💥 Damage ×$dmgMult  │  ❤️  Health ×$hpMult');
+      if (dialogue != null && dialogue.isNotEmpty) {
+        print('│  💬 Dialogue: "$dialogue"');
+      }
+      final events = json['narrativeEvents'] as List<dynamic>? ?? [];
+      if (events.isNotEmpty) {
+        print('│  📜 Narrative Events: ${events.length} taunts queued');
+      }
+    }
+
+    // Reasoning block
+    final reasoning = json['reasoning'] as String?;
+    if (reasoning != null && reasoning.isNotEmpty) {
+      print(
+          '├───────────────────────────────────────────────────────────');
+      print('│  🧠 Architect Reasoning:');
+      for (final line in _wordWrap(reasoning, 55)) {
+        print('│     $line');
+      }
+    }
+
+    print(
+        '└───────────────────────────────────────────────────────────');
+    print('');
+  }
+
+  void _logError(String phase, dynamic targetLevel, String message) {
+    print('');
+    print(
+        '┌───────────────────────────────────────────────────────────');
+    print(
+        '│  ❌  ANTIGRAVITY AGENT ─ $phase Error (Level $targetLevel)');
+    print(
+        '├───────────────────────────────────────────────────────────');
+    for (final line in _wordWrap(message, 55)) {
+      print('│  $line');
+    }
+    print(
+        '└───────────────────────────────────────────────────────────');
+    print('');
+  }
+
+  List<String> _wordWrap(String text, int maxWidth) {
+    final words = text.split(' ');
+    final lines = <String>[];
+    var current = StringBuffer();
+    for (final word in words) {
+      if (current.length + word.length + 1 > maxWidth &&
+          current.isNotEmpty) {
+        lines.add(current.toString());
+        current = StringBuffer();
+      }
+      if (current.isNotEmpty) current.write(' ');
+      current.write(word);
+    }
+    if (current.isNotEmpty) lines.add(current.toString());
+    return lines;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // JSON Comment Stripping
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Strips // line comments from JSON text, respecting string literals.
+  String _stripJsonComments(String json) {
+    final lines = json.split('\n');
+    final result = <String>[];
+    for (final line in lines) {
+      if (line.trimLeft().startsWith('//')) continue; // Pure comment line
+      // Find // outside of string literals
+      int? commentStart;
+      bool inString = false;
+      bool escaped = false;
+      for (int i = 0; i < line.length - 1; i++) {
+        if (escaped) { escaped = false; continue; }
+        if (line[i] == '\\') { escaped = true; continue; }
+        if (line[i] == '"') { inString = !inString; continue; }
+        if (!inString && line[i] == '/' && line[i + 1] == '/') {
+          commentStart = i;
+          break;
+        }
+      }
+      result.add(commentStart != null ? line.substring(0, commentStart) : line);
+    }
+    return result.join('\n');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // File Logging
+  // ═══════════════════════════════════════════════════════════════
 
   /// Synchronous, non-blocking log writer.
   void _logSync(
@@ -280,36 +299,13 @@ class ArchitectAgent {
     Map<String, dynamic> output,
     String phase,
   ) {
-    try {
-      final logDir = Directory('logs');
-      if (!logDir.existsSync()) {
-        logDir.createSync(recursive: true);
-      }
-      final logFile = File('logs/logs.json');
-      List<dynamic> logsList = [];
-      if (logFile.existsSync()) {
-        final contents = logFile.readAsStringSync();
-        if (contents.isNotEmpty) {
-          try {
-            logsList = jsonDecode(contents) as List<dynamic>;
-          } catch (e) {
-            print('Error decoding logs/logs.json, starting fresh: $e');
-          }
-        }
-      }
-
-      logsList.add({
-        'timestamp': DateTime.now().toIso8601String(),
-        'phase': phase,
-        'input_telemetry': input,
-        'output_response': output,
-      });
-
-      logFile.writeAsStringSync(jsonEncode(logsList));
-    } catch (logErr) {
-      print('Failed to write to logs/logs.json: $logErr');
-    }
+    // Disabled on mobile to prevent lag and FileSystemExceptions.
+    return;
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // JSON Sanitization
+  // ═══════════════════════════════════════════════════════════════
 
   String _sanitizeJsonString(String rawJson) {
     final buffer = StringBuffer();

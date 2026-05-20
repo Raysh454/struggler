@@ -8,7 +8,7 @@ class GameState {
   DateTime? levelStartTime;
   final List<double> levelCompletionTimes; // seconds per level
 
-  GameState({this.currentLevel = 10, this.maxLevels = 10})
+  GameState({this.currentLevel = 0, this.maxLevels = 10})
     : isPaused = false,
       levelStartTime = null,
       levelCompletionTimes = [];

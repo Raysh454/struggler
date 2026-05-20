@@ -39,7 +39,7 @@ class Spike extends PositionComponent with CollisionCallbacks {
       size: Vector2(20, 18),
       position: Vector2(6, 14),
     );
-    add(hitbox);
+    await add(hitbox);
   }
 
   void _determineOrientationAndPosition() {

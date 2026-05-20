@@ -124,7 +124,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   Future<void> onLoad() async {
     super.onLoad();
     
-    add(RectangleHitbox());
+    await add(RectangleHitbox());
     try {
       final idleAnim = await _loadAnimation('Idle.png', 8, 2);
       final runAnim = await _loadAnimation('Run.png', 8, 2);

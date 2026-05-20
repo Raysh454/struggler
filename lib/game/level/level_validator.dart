@@ -12,7 +12,7 @@ class LevelValidator {
   static List<String>? _activeFeedbackLogs;
 
   static void _log(String message) {
-    print(message);
+    //print(message);
     _activeFeedbackLogs?.add(message);
   }
 
@@ -28,16 +28,25 @@ class LevelValidator {
   // Max horizontal (DJ + dodge): ~12.3 tiles
   //
   // We use conservative values so levels are comfortably solvable:
-  static const int maxJumpHeight = GameConfig.validatorMaxJumpHeight;      // tiles upward (from 5.56)
-  static const int maxHorizontalGap = GameConfig.validatorMaxHorizontalGap;  // tiles across (from 12.3)
-  static const int spawnSafeRadius = GameConfig.validatorSpawnSafeRadius;    // tiles around spawn free of hazards
-  static const int exitSafeRadius = GameConfig.validatorExitSafeRadius;     // tiles around exit free of hazards
-  static const int maxRepairIterations = GameConfig.validatorMaxRepairIterations;
+  static const int maxJumpHeight =
+      GameConfig.validatorMaxJumpHeight; // tiles upward (from 5.56)
+  static const int maxHorizontalGap =
+      GameConfig.validatorMaxHorizontalGap; // tiles across (from 12.3)
+  static const int spawnSafeRadius =
+      GameConfig.validatorSpawnSafeRadius; // tiles around spawn free of hazards
+  static const int exitSafeRadius =
+      GameConfig.validatorExitSafeRadius; // tiles around exit free of hazards
+  static const int maxRepairIterations =
+      GameConfig.validatorMaxRepairIterations;
 
   /// Validate and sanitize the level data.
   /// Returns a new [LevelData] that is guaranteed to be solvable,
   /// or falls back to [fallbackLevel] if repair fails.
-  static LevelData validate(LevelData data, {LevelData? fallbackLevel, List<String>? feedbackLogs}) {
+  static LevelData validate(
+    LevelData data, {
+    LevelData? fallbackLevel,
+    List<String>? feedbackLogs,
+  }) {
     _activeFeedbackLogs = feedbackLogs;
     try {
       var tiles = List<TileData>.from(data.tiles);
@@ -46,13 +55,19 @@ class LevelValidator {
 
       // Phase 1: Tile Sanitization
       tiles = _sanitizeTiles(tiles, data.width, data.height);
-      
+
       // Phase 1.5: Lava Containment
       tiles = _ensureLavaContainment(tiles, data.width, data.height);
-      
+
       enemies = _sanitizeEnemies(enemies, tiles, data.width, data.height);
       if (data.levelId != -1) {
-        enemies = _ensureMinEnemies(enemies, tiles, data.spawn, data.width, data.height);
+        enemies = _ensureMinEnemies(
+          enemies,
+          tiles,
+          data.spawn,
+          data.width,
+          data.height,
+        );
       }
       pickups = _sanitizePickups(pickups, tiles, data.width, data.height);
 
@@ -69,19 +84,33 @@ class LevelValidator {
         final surfaces = _findSurfaces(grid, data.width, data.height);
 
         if (surfaces.isEmpty) {
-          _log('[LevelValidator] Validation error: No solid surfaces found in the map.');
+          _log(
+            '[LevelValidator] Validation error: No solid surfaces found in the map.',
+          );
           break;
         }
 
-        final spawnSurface = _findNearestSurface(surfaces, spawn.x.round(), spawn.y.round());
-        final exitSurface = _findNearestSurface(surfaces, exit.x.round(), exit.y.round());
+        final spawnSurface = _findNearestSurface(
+          surfaces,
+          spawn.x.round(),
+          spawn.y.round(),
+        );
+        final exitSurface = _findNearestSurface(
+          surfaces,
+          exit.x.round(),
+          exit.y.round(),
+        );
 
         if (spawnSurface == null) {
-          _log('[LevelValidator] Validation error: Spawn point is not near any solid surface.');
+          _log(
+            '[LevelValidator] Validation error: Spawn point is not near any solid surface.',
+          );
           break;
         }
         if (exitSurface == null) {
-          _log('[LevelValidator] Validation error: Exit portal is not near any solid surface.');
+          _log(
+            '[LevelValidator] Validation error: Exit portal is not near any solid surface.',
+          );
           break;
         }
 
@@ -89,39 +118,86 @@ class LevelValidator {
 
         if (reachable.contains(exitSurface)) {
           // Level is solvable! Add visibility bridges before returning.
-          _log('[LevelValidator] Success: Level is solvable after $attempt repair iterations.');
-          tiles = _addVisibilityBridges(tiles, surfaces, spawnSurface, exitSurface, grid, data.width, data.height);
-          return data._copyWith(tiles: tiles, enemies: enemies, pickups: pickups);
+          _log(
+            '[LevelValidator] Success: Level is solvable after $attempt repair iterations.',
+          );
+          tiles = _addVisibilityBridges(
+            tiles,
+            surfaces,
+            spawnSurface,
+            exitSurface,
+            grid,
+            data.width,
+            data.height,
+          );
+          return data._copyWith(
+            tiles: tiles,
+            enemies: enemies,
+            pickups: pickups,
+          );
         }
 
         // Try to bridge the gap
-        final bridgeTiles = _buildBridges(surfaces, reachable, exitSurface, data.width, data.height);
+        final bridgeTiles = _buildBridges(
+          surfaces,
+          reachable,
+          exitSurface,
+          data.width,
+          data.height,
+        );
         if (bridgeTiles.isEmpty) {
           _log('[LevelValidator] Validation error: Gap is too wide to bridge.');
           break; // Can't fix it
         }
-        _log('[LevelValidator] Added ${bridgeTiles.length} bridge/assist platforms to connect reachable sections.');
+        _log(
+          '[LevelValidator] Added ${bridgeTiles.length} bridge/assist platforms to connect reachable sections.',
+        );
         tiles.addAll(bridgeTiles);
       }
 
       // Final check after all repairs
       final grid = _buildGrid(tiles, data.width, data.height);
       final surfaces = _findSurfaces(grid, data.width, data.height);
-      final spawnSurface = _findNearestSurface(surfaces, data.spawn.x.round(), data.spawn.y.round());
-      final exitSurface = _findNearestSurface(surfaces, data.exit.x.round(), data.exit.y.round());
+      final spawnSurface = _findNearestSurface(
+        surfaces,
+        data.spawn.x.round(),
+        data.spawn.y.round(),
+      );
+      final exitSurface = _findNearestSurface(
+        surfaces,
+        data.exit.x.round(),
+        data.exit.y.round(),
+      );
 
       if (spawnSurface != null && exitSurface != null) {
         final reachable = _bfsReachability(surfaces, spawnSurface, grid);
         if (reachable.contains(exitSurface)) {
-          _log('[LevelValidator] Success: Level was repaired successfully and is now solvable.');
-          tiles = _addVisibilityBridges(tiles, surfaces, spawnSurface, exitSurface, grid, data.width, data.height);
-          return data._copyWith(tiles: tiles, enemies: enemies, pickups: pickups);
+          _log(
+            '[LevelValidator] Success: Level was repaired successfully and is now solvable.',
+          );
+          tiles = _addVisibilityBridges(
+            tiles,
+            surfaces,
+            spawnSurface,
+            exitSurface,
+            grid,
+            data.width,
+            data.height,
+          );
+          return data._copyWith(
+            tiles: tiles,
+            enemies: enemies,
+            pickups: pickups,
+          );
         }
       }
 
       // Repair failed — use fallback
-      _log('[LevelValidator] WARNING: Could not repair level ${data.levelId}, using fallback');
-      return fallbackLevel ?? data._copyWith(tiles: tiles, enemies: enemies, pickups: pickups);
+      _log(
+        '[LevelValidator] WARNING: Could not repair level ${data.levelId}, using fallback',
+      );
+      return fallbackLevel ??
+          data._copyWith(tiles: tiles, enemies: enemies, pickups: pickups);
     } finally {
       _activeFeedbackLogs = null;
     }
@@ -133,8 +209,16 @@ class LevelValidator {
     final grid = _buildGrid(tiles, data.width, data.height);
     final surfaces = _findSurfaces(grid, data.width, data.height);
     if (surfaces.isEmpty) return false;
-    final spawnSurface = _findNearestSurface(surfaces, data.spawn.x.round(), data.spawn.y.round());
-    final exitSurface = _findNearestSurface(surfaces, data.exit.x.round(), data.exit.y.round());
+    final spawnSurface = _findNearestSurface(
+      surfaces,
+      data.spawn.x.round(),
+      data.spawn.y.round(),
+    );
+    final exitSurface = _findNearestSurface(
+      surfaces,
+      data.exit.x.round(),
+      data.exit.y.round(),
+    );
     if (spawnSurface == null || exitSurface == null) return false;
     final reachable = _bfsReachability(surfaces, spawnSurface, grid);
     return reachable.contains(exitSurface);
@@ -147,7 +231,11 @@ class LevelValidator {
   /// Remove floating lava and spikes that aren't anchored to blocks.
   /// Also converts any solid BLOCK that is floating (no solid tile directly
   /// beneath it) into a PLATFORM so the player can always jump through it.
-  static List<TileData> _sanitizeTiles(List<TileData> tiles, int mapWidth, int mapHeight) {
+  static List<TileData> _sanitizeTiles(
+    List<TileData> tiles,
+    int mapWidth,
+    int mapHeight,
+  ) {
     final grid = _buildGrid(tiles, mapWidth, mapHeight);
     final sanitized = <TileData>[];
 
@@ -168,19 +256,28 @@ class LevelValidator {
           final startX = tile.x.round();
           final endX = (tile.x + tile.w).round();
           for (int bx = startX; bx < endX && bx < mapWidth; bx++) {
-            if (bottomRow < grid.length && bx < grid[0].length &&
-                (grid[bottomRow][bx] == 'block' || grid[bottomRow][bx] == 'platform')) {
+            if (bottomRow < grid.length &&
+                bx < grid[0].length &&
+                (grid[bottomRow][bx] == 'block' ||
+                    grid[bottomRow][bx] == 'platform')) {
               hasSupport = true;
               break;
             }
           }
           if (!hasSupport) {
             // Convert to pass-through platform so the player isn't blocked from below
-            sanitized.add(TileData(
-              type: 'platform',
-              x: tile.x, y: tile.y, w: tile.w, h: tile.h,
-            ));
-            _log('[LevelValidator] Converted floating BLOCK at (${tile.x}, ${tile.y}) to PLATFORM');
+            sanitized.add(
+              TileData(
+                type: 'platform',
+                x: tile.x,
+                y: tile.y,
+                w: tile.w,
+                h: tile.h,
+              ),
+            );
+            _log(
+              '[LevelValidator] Converted floating BLOCK at (${tile.x}, ${tile.y}) to PLATFORM',
+            );
             continue;
           }
         }
@@ -190,13 +287,17 @@ class LevelValidator {
 
       if (tile.type == 'lava') {
         if (_overlapsWithSolid(tile, grid, mapWidth, mapHeight)) {
-          _log('[LevelValidator] Removed overlapping lava at (${tile.x}, ${tile.y})');
+          _log(
+            '[LevelValidator] Removed overlapping lava at (${tile.x}, ${tile.y})',
+          );
           continue;
         }
         if (_isLavaAnchored(tile, grid, mapWidth, mapHeight)) {
           sanitized.add(tile);
         } else {
-          _log('[LevelValidator] Removed floating lava at (${tile.x}, ${tile.y})');
+          _log(
+            '[LevelValidator] Removed floating lava at (${tile.x}, ${tile.y})',
+          );
         }
         continue;
       }
@@ -211,7 +312,8 @@ class LevelValidator {
             final sx = tile.x.round() + dx;
             final sy = tile.y.round() + dy;
 
-            if (sx < 0 || sx >= mapWidth + 10 || sy < 0 || sy >= mapHeight + 10) continue;
+            if (sx < 0 || sx >= mapWidth + 10 || sy < 0 || sy >= mapHeight + 10)
+              continue;
 
             // Check direct overlap with solid block/platform
             if (grid[sy][sx] == 'block' || grid[sy][sx] == 'platform') {
@@ -227,12 +329,19 @@ class LevelValidator {
               h: 1.0,
             );
 
-            bool anchored = _isSpikeAnchored(individualTile, grid, mapWidth, mapHeight);
+            bool anchored = _isSpikeAnchored(
+              individualTile,
+              grid,
+              mapWidth,
+              mapHeight,
+            );
             TileData processedTile = individualTile;
 
             if (!anchored) {
               // Check if there is a wall 2 tiles to the left (meaning sx - 2 is solid)
-              if (sx - 2 >= 0 && (grid[sy][sx - 2] == 'block' || grid[sy][sx - 2] == 'platform')) {
+              if (sx - 2 >= 0 &&
+                  (grid[sy][sx - 2] == 'block' ||
+                      grid[sy][sx - 2] == 'platform')) {
                 processedTile = TileData(
                   type: 'spike',
                   x: (sx - 1).toDouble(),
@@ -241,10 +350,14 @@ class LevelValidator {
                   h: 1.0,
                 );
                 anchored = true;
-                _log('[LevelValidator] Healed misplaced left-wall spike by shifting x from $sx to ${processedTile.x}');
+                _log(
+                  '[LevelValidator] Healed misplaced left-wall spike by shifting x from $sx to ${processedTile.x}',
+                );
               }
               // Check if there is a wall 2 tiles to the right (meaning sx + 2 is solid)
-              else if (sx + 2 < mapWidth + 10 && (grid[sy][sx + 2] == 'block' || grid[sy][sx + 2] == 'platform')) {
+              else if (sx + 2 < mapWidth + 10 &&
+                  (grid[sy][sx + 2] == 'block' ||
+                      grid[sy][sx + 2] == 'platform')) {
                 processedTile = TileData(
                   type: 'spike',
                   x: (sx + 1).toDouble(),
@@ -253,10 +366,14 @@ class LevelValidator {
                   h: 1.0,
                 );
                 anchored = true;
-                _log('[LevelValidator] Healed misplaced right-wall spike by shifting x from $sx to ${processedTile.x}');
+                _log(
+                  '[LevelValidator] Healed misplaced right-wall spike by shifting x from $sx to ${processedTile.x}',
+                );
               }
               // Check if there is a floor 2 tiles below (meaning sy + 2 is solid)
-              else if (sy + 2 < mapHeight + 10 && (grid[sy + 2][sx] == 'block' || grid[sy + 2][sx] == 'platform')) {
+              else if (sy + 2 < mapHeight + 10 &&
+                  (grid[sy + 2][sx] == 'block' ||
+                      grid[sy + 2][sx] == 'platform')) {
                 processedTile = TileData(
                   type: 'spike',
                   x: sx.toDouble(),
@@ -265,10 +382,14 @@ class LevelValidator {
                   h: 1.0,
                 );
                 anchored = true;
-                _log('[LevelValidator] Healed misplaced floor spike by shifting y from $sy to ${processedTile.y}');
+                _log(
+                  '[LevelValidator] Healed misplaced floor spike by shifting y from $sy to ${processedTile.y}',
+                );
               }
               // Check if there is a ceiling 2 tiles above (meaning sy - 2 is solid)
-              else if (sy - 2 >= 0 && (grid[sy - 2][sx] == 'block' || grid[sy - 2][sx] == 'platform')) {
+              else if (sy - 2 >= 0 &&
+                  (grid[sy - 2][sx] == 'block' ||
+                      grid[sy - 2][sx] == 'platform')) {
                 processedTile = TileData(
                   type: 'spike',
                   x: sx.toDouble(),
@@ -277,18 +398,23 @@ class LevelValidator {
                   h: 1.0,
                 );
                 anchored = true;
-                _log('[LevelValidator] Healed misplaced ceiling spike by shifting y from $sy to ${processedTile.y}');
+                _log(
+                  '[LevelValidator] Healed misplaced ceiling spike by shifting y from $sy to ${processedTile.y}',
+                );
               }
             }
 
-            if (anchored || _isSpikeAnchored(processedTile, grid, mapWidth, mapHeight)) {
+            if (anchored ||
+                _isSpikeAnchored(processedTile, grid, mapWidth, mapHeight)) {
               // Ensure the healed position does not overlap with any solid either!
               final px = processedTile.x.round();
               final py = processedTile.y.round();
               if (grid[py][px] != 'block' && grid[py][px] != 'platform') {
                 sanitized.add(processedTile);
               } else {
-                _log('[LevelValidator] Removed healed spike at ($px, $py) because it overlaps with a solid block');
+                _log(
+                  '[LevelValidator] Removed healed spike at ($px, $py) because it overlaps with a solid block',
+                );
               }
             } else {
               _log('[LevelValidator] Removed floating spike at ($sx, $sy)');
@@ -307,7 +433,11 @@ class LevelValidator {
 
   /// Ensures all lava tiles are properly contained within a pit by adding a wall
   /// to the left and right if they are exposed.
-  static List<TileData> _ensureLavaContainment(List<TileData> tiles, int w, int h) {
+  static List<TileData> _ensureLavaContainment(
+    List<TileData> tiles,
+    int w,
+    int h,
+  ) {
     var sanitized = List<TileData>.from(tiles);
     final grid = _buildGrid(sanitized, w, h);
 
@@ -320,24 +450,48 @@ class LevelValidator {
         // Check left edge
         if (startX > 0 && lavaY >= 0 && lavaY < h) {
           for (int dy = 0; dy < tile.h; dy++) {
-             final y = lavaY + dy;
-             if (y < h && grid[y][startX - 1] != 'block' && grid[y][startX - 1] != 'platform') {
-               sanitized.add(TileData(type: 'block', x: (startX - 1).toDouble(), y: y.toDouble(), w: 1.0, h: 1.0));
-               grid[y][startX - 1] = 'block';
-               _log('[LevelValidator] Built left lava containment wall at (${startX - 1}, $y)');
-             }
+            final y = lavaY + dy;
+            if (y < h &&
+                grid[y][startX - 1] != 'block' &&
+                grid[y][startX - 1] != 'platform') {
+              sanitized.add(
+                TileData(
+                  type: 'block',
+                  x: (startX - 1).toDouble(),
+                  y: y.toDouble(),
+                  w: 1.0,
+                  h: 1.0,
+                ),
+              );
+              grid[y][startX - 1] = 'block';
+              _log(
+                '[LevelValidator] Built left lava containment wall at (${startX - 1}, $y)',
+              );
+            }
           }
         }
 
         // Check right edge
         if (endX < w && lavaY >= 0 && lavaY < h) {
           for (int dy = 0; dy < tile.h; dy++) {
-             final y = lavaY + dy;
-             if (y < h && grid[y][endX] != 'block' && grid[y][endX] != 'platform') {
-               sanitized.add(TileData(type: 'block', x: endX.toDouble(), y: y.toDouble(), w: 1.0, h: 1.0));
-               grid[y][endX] = 'block';
-               _log('[LevelValidator] Built right lava containment wall at ($endX, $y)');
-             }
+            final y = lavaY + dy;
+            if (y < h &&
+                grid[y][endX] != 'block' &&
+                grid[y][endX] != 'platform') {
+              sanitized.add(
+                TileData(
+                  type: 'block',
+                  x: endX.toDouble(),
+                  y: y.toDouble(),
+                  w: 1.0,
+                  h: 1.0,
+                ),
+              );
+              grid[y][endX] = 'block';
+              _log(
+                '[LevelValidator] Built right lava containment wall at ($endX, $y)',
+              );
+            }
           }
         }
       }
@@ -346,7 +500,12 @@ class LevelValidator {
   }
 
   /// Checks if any cell in the given tile overlaps with a solid block or platform.
-  static bool _overlapsWithSolid(TileData tile, List<List<String?>> grid, int w, int h) {
+  static bool _overlapsWithSolid(
+    TileData tile,
+    List<List<String?>> grid,
+    int w,
+    int h,
+  ) {
     final startX = tile.x.round();
     final endX = (tile.x + tile.w).round();
     final startY = tile.y.round();
@@ -368,7 +527,12 @@ class LevelValidator {
   /// - It sits directly on top of a block row, OR
   /// - It's at the bottom of the map (y + h >= mapHeight - 1), OR
   /// - There's a block directly below the lava's full width
-  static bool _isLavaAnchored(TileData lava, List<List<String?>> grid, int w, int h) {
+  static bool _isLavaAnchored(
+    TileData lava,
+    List<List<String?>> grid,
+    int w,
+    int h,
+  ) {
     final bottomY = (lava.y + lava.h).round();
 
     // At the bottom of the map — acts as a void/pit
@@ -381,17 +545,26 @@ class LevelValidator {
     // Allow lava that sits directly on blocks
     for (int x = startX; x < endX && x < w; x++) {
       if (x < 0) continue;
-      if (bottomY >= 0 && bottomY < h && (grid[bottomY][x] == 'block' || grid[bottomY][x] == 'platform')) {
+      if (bottomY >= 0 &&
+          bottomY < h &&
+          (grid[bottomY][x] == 'block' || grid[bottomY][x] == 'platform')) {
         continue; // This column is supported
       }
       // Also allow if lava is filling a gap between blocks (lava at same Y as blocks)
       final lavaY = lava.y.round();
       bool hasBlockAdjacent = false;
       // Check left and right for blocks at the same Y
-      if (startX > 0 && lavaY >= 0 && lavaY < h && (grid[lavaY][startX - 1] == 'block' || grid[lavaY][startX - 1] == 'platform')) {
+      if (startX > 0 &&
+          lavaY >= 0 &&
+          lavaY < h &&
+          (grid[lavaY][startX - 1] == 'block' ||
+              grid[lavaY][startX - 1] == 'platform')) {
         hasBlockAdjacent = true;
       }
-      if (endX < w && lavaY >= 0 && lavaY < h && (grid[lavaY][endX] == 'block' || grid[lavaY][endX] == 'platform')) {
+      if (endX < w &&
+          lavaY >= 0 &&
+          lavaY < h &&
+          (grid[lavaY][endX] == 'block' || grid[lavaY][endX] == 'platform')) {
         hasBlockAdjacent = true;
       }
       if (!hasBlockAdjacent) return false;
@@ -400,24 +573,37 @@ class LevelValidator {
   }
 
   /// Spike is anchored if there's a block below, above, left, or right.
-  static bool _isSpikeAnchored(TileData spike, List<List<String?>> grid, int w, int h) {
+  static bool _isSpikeAnchored(
+    TileData spike,
+    List<List<String?>> grid,
+    int w,
+    int h,
+  ) {
     final startX = spike.x.round();
     final endX = (spike.x + spike.w).round();
     final y = spike.y.round();
 
     for (int x = startX; x < endX && x < w; x++) {
       if (x < 0) continue;
-      
+
       // Check below
-      if (y + 1 < h && (grid[y + 1][x] == 'block' || grid[y + 1][x] == 'platform')) return true;
+      if (y + 1 < h &&
+          (grid[y + 1][x] == 'block' || grid[y + 1][x] == 'platform'))
+        return true;
       // Check above
-      if (y - 1 >= 0 && (grid[y - 1][x] == 'block' || grid[y - 1][x] == 'platform')) return true;
+      if (y - 1 >= 0 &&
+          (grid[y - 1][x] == 'block' || grid[y - 1][x] == 'platform'))
+        return true;
       // Check left
-      if (x - 1 >= 0 && (grid[y][x - 1] == 'block' || grid[y][x - 1] == 'platform')) return true;
+      if (x - 1 >= 0 &&
+          (grid[y][x - 1] == 'block' || grid[y][x - 1] == 'platform'))
+        return true;
       // Check right
-      if (x + 1 < w && (grid[y][x + 1] == 'block' || grid[y][x + 1] == 'platform')) return true;
+      if (x + 1 < w &&
+          (grid[y][x + 1] == 'block' || grid[y][x + 1] == 'platform'))
+        return true;
     }
-    
+
     return false;
   }
 
@@ -426,7 +612,11 @@ class LevelValidator {
   static const double _minEnemyPatrolRange = 64.0; // 2 tiles minimum
 
   static List<EnemyData> _sanitizeEnemies(
-      List<EnemyData> enemies, List<TileData> tiles, int w, int h) {
+    List<EnemyData> enemies,
+    List<TileData> tiles,
+    int w,
+    int h,
+  ) {
     final grid = _buildGrid(tiles, w, h);
     final surfaces = _findSurfaces(grid, w, h);
     final sanitized = <EnemyData>[];
@@ -441,32 +631,43 @@ class LevelValidator {
       final ey = enemy.y.round();
 
       if (surfaces.isEmpty) {
-        _log('[LevelValidator] No solid surfaces found in map to place enemy at (${enemy.x}, ${enemy.y})');
+        _log(
+          '[LevelValidator] No solid surfaces found in map to place enemy at (${enemy.x}, ${enemy.y})',
+        );
         continue;
       }
 
       final nearest = _findNearestSurface(surfaces, ex, ey);
       if (nearest != null) {
         // Snap the enemy horizontally to the surface bounds and vertically stand on it
-        final double snappedX = enemy.x.clamp(nearest.startX.toDouble(), nearest.endX.toDouble());
+        final double snappedX = enemy.x.clamp(
+          nearest.startX.toDouble(),
+          nearest.endX.toDouble(),
+        );
         final double snappedY = (nearest.y - 2).toDouble();
 
         // Enforce minimum patrol range so they can always aggro
         final safePatrol = max(enemy.patrolRange, _minEnemyPatrolRange);
 
-        _log('[LevelValidator] Teleported enemy (${enemy.type}) from (${enemy.x}, ${enemy.y}) to safe ground at ($snappedX, $snappedY)');
+        _log(
+          '[LevelValidator] Teleported enemy (${enemy.type}) from (${enemy.x}, ${enemy.y}) to safe ground at ($snappedX, $snappedY)',
+        );
 
-        sanitized.add(EnemyData(
-          x: snappedX,
-          y: snappedY,
-          health: enemy.health,
-          damage: enemy.damage,
-          speed: enemy.speed,
-          type: enemy.type,
-          patrolRange: safePatrol,
-        ));
+        sanitized.add(
+          EnemyData(
+            x: snappedX,
+            y: snappedY,
+            health: enemy.health,
+            damage: enemy.damage,
+            speed: enemy.speed,
+            type: enemy.type,
+            patrolRange: safePatrol,
+          ),
+        );
       } else {
-        _log('[LevelValidator] No safe surface found near enemy at (${enemy.x}, ${enemy.y}), removing.');
+        _log(
+          '[LevelValidator] No safe surface found near enemy at (${enemy.x}, ${enemy.y}), removing.',
+        );
       }
     }
     return sanitized;
@@ -474,7 +675,11 @@ class LevelValidator {
 
   /// Ensure pickups aren't inside blocks.
   static List<PickupData> _sanitizePickups(
-      List<PickupData> pickups, List<TileData> tiles, int w, int h) {
+    List<PickupData> pickups,
+    List<TileData> tiles,
+    int w,
+    int h,
+  ) {
     final grid = _buildGrid(tiles, w, h);
     final sanitized = <PickupData>[];
 
@@ -482,17 +687,28 @@ class LevelValidator {
       final px = pickup.x.round();
       final py = pickup.y.round();
 
-      if (px >= 0 && px < w + 10 && py >= 0 && py < h + 10 &&
-          py < grid.length && px < grid[0].length) {
+      if (px >= 0 &&
+          px < w + 10 &&
+          py >= 0 &&
+          py < h + 10 &&
+          py < grid.length &&
+          px < grid[0].length) {
         if (grid[py][px] == 'block' || grid[py][px] == 'platform') {
           // Inside a block — move it up
           int newY = py - 1;
-          while (newY >= 0 && newY < grid.length && px < grid[0].length && (grid[newY][px] == 'block' || grid[newY][px] == 'platform')) {
+          while (newY >= 0 &&
+              newY < grid.length &&
+              px < grid[0].length &&
+              (grid[newY][px] == 'block' || grid[newY][px] == 'platform')) {
             newY--;
           }
           if (newY >= 0) {
-            sanitized.add(PickupData(type: pickup.type, x: pickup.x, y: newY.toDouble()));
-            _log('[LevelValidator] Moved pickup from (${pickup.x}, ${pickup.y}) to (${pickup.x}, $newY)');
+            sanitized.add(
+              PickupData(type: pickup.type, x: pickup.x, y: newY.toDouble()),
+            );
+            _log(
+              '[LevelValidator] Moved pickup from (${pickup.x}, ${pickup.y}) to (${pickup.x}, $newY)',
+            );
           }
         } else {
           sanitized.add(pickup);
@@ -544,7 +760,9 @@ class LevelValidator {
       if ((ex - spawn.x).abs() < 5 && (ey - spawn.y).abs() < 5) continue;
 
       result.add(EnemyData(x: ex, y: ey, type: 'skeleton', patrolRange: 64.0));
-      _log('[LevelValidator] Added filler skeleton enemy at ($ex, $ey) to meet minimum ($minCount)');
+      _log(
+        '[LevelValidator] Added filler skeleton enemy at ($ex, $ey) to meet minimum ($minCount)',
+      );
     }
 
     return result;
@@ -557,7 +775,11 @@ class LevelValidator {
   /// Ensure spawn area is free of hazards, has ground below, and no
   /// impassable blocks directly above that would trap the player.
   static List<TileData> _ensureSpawnSafety(
-      List<TileData> tiles, ({double x, double y}) spawn, int w, int h) {
+    List<TileData> tiles,
+    ({double x, double y}) spawn,
+    int w,
+    int h,
+  ) {
     final sx = spawn.x.round();
     final sy = spawn.y.round();
     final result = <TileData>[];
@@ -574,7 +796,9 @@ class LevelValidator {
             tileEndX > sx - spawnSafeRadius &&
             tileStartY < sy + spawnSafeRadius &&
             tileEndY > sy - spawnSafeRadius) {
-          _log('[LevelValidator] Removed ${tile.type} near spawn at (${tile.x}, ${tile.y})');
+          _log(
+            '[LevelValidator] Removed ${tile.type} near spawn at (${tile.x}, ${tile.y})',
+          );
           continue; // Remove hazard near spawn
         }
       }
@@ -587,13 +811,22 @@ class LevelValidator {
         final tileEndY = (tile.y + tile.h).round();
 
         // Check if this block overlaps the spawn vertical column within safe radius height above
-        if (tileStartX <= sx + 1 && tileEndX >= sx &&
-            tileStartY < sy && tileEndY > sy - spawnSafeRadius - 2) {
-          _log('[LevelValidator] Converted BLOCK above spawn at (${tile.x}, ${tile.y}) to PLATFORM');
-          result.add(TileData(
-            type: 'platform',
-            x: tile.x, y: tile.y, w: tile.w, h: tile.h,
-          ));
+        if (tileStartX <= sx + 1 &&
+            tileEndX >= sx &&
+            tileStartY < sy &&
+            tileEndY > sy - spawnSafeRadius - 2) {
+          _log(
+            '[LevelValidator] Converted BLOCK above spawn at (${tile.x}, ${tile.y}) to PLATFORM',
+          );
+          result.add(
+            TileData(
+              type: 'platform',
+              x: tile.x,
+              y: tile.y,
+              w: tile.w,
+              h: tile.h,
+            ),
+          );
           continue;
         }
       }
@@ -605,7 +838,10 @@ class LevelValidator {
     final grid = _buildGrid(result, w, h);
     bool hasSpawnGround = false;
     for (int checkY = sy + 1; checkY < min(sy + 4, h + 10); checkY++) {
-      if (checkY >= 0 && checkY < grid.length && sx >= 0 && sx < grid[0].length &&
+      if (checkY >= 0 &&
+          checkY < grid.length &&
+          sx >= 0 &&
+          sx < grid[0].length &&
           (grid[checkY][sx] == 'block' || grid[checkY][sx] == 'platform')) {
         hasSpawnGround = true;
         break;
@@ -614,7 +850,15 @@ class LevelValidator {
 
     if (!hasSpawnGround) {
       // Add a small platform under spawn
-      result.add(TileData(type: 'block', x: (sx - 1).toDouble(), y: (sy + 1).toDouble(), w: 4, h: 1));
+      result.add(
+        TileData(
+          type: 'block',
+          x: (sx - 1).toDouble(),
+          y: (sy + 1).toDouble(),
+          w: 4,
+          h: 1,
+        ),
+      );
       _log('[LevelValidator] Added spawn platform at (${sx - 1}, ${sy + 1})');
     }
 
@@ -623,7 +867,11 @@ class LevelValidator {
 
   /// Ensure exit area has ground below.
   static List<TileData> _ensureExitSafety(
-      List<TileData> tiles, ({double x, double y}) exit, int w, int h) {
+    List<TileData> tiles,
+    ({double x, double y}) exit,
+    int w,
+    int h,
+  ) {
     final ex = exit.x.round();
     final ey = exit.y.round();
     final result = List<TileData>.from(tiles);
@@ -631,7 +879,10 @@ class LevelValidator {
     final grid = _buildGrid(result, w, h);
     bool hasExitGround = false;
     for (int checkY = ey + 1; checkY < min(ey + 4, h + 10); checkY++) {
-      if (checkY >= 0 && checkY < grid.length && ex >= 0 && ex < grid[0].length &&
+      if (checkY >= 0 &&
+          checkY < grid.length &&
+          ex >= 0 &&
+          ex < grid[0].length &&
           (grid[checkY][ex] == 'block' || grid[checkY][ex] == 'platform')) {
         hasExitGround = true;
         break;
@@ -639,7 +890,15 @@ class LevelValidator {
     }
 
     if (!hasExitGround) {
-      result.add(TileData(type: 'block', x: (ex - 1).toDouble(), y: (ey + 1).toDouble(), w: 4, h: 1));
+      result.add(
+        TileData(
+          type: 'block',
+          x: (ex - 1).toDouble(),
+          y: (ey + 1).toDouble(),
+          w: 4,
+          h: 1,
+        ),
+      );
       _log('[LevelValidator] Added exit platform at (${ex - 1}, ${ey + 1})');
     }
 
@@ -648,7 +907,10 @@ class LevelValidator {
 
   /// Clear any solid blocks/platforms directly enclosing the spawn, guardian portal, or exit portal
   static List<TileData> _carveOutPortalSpaces(
-      List<TileData> tiles, ({double x, double y}) spawn, ({double x, double y}) exit) {
+    List<TileData> tiles,
+    ({double x, double y}) spawn,
+    ({double x, double y}) exit,
+  ) {
     final clearCells = <(int, int)>{};
 
     final sx = spawn.x.round();
@@ -705,17 +967,21 @@ class LevelValidator {
         result.add(tile);
       } else {
         // Decompose the intersecting tile into 1x1 sub-tiles, omitting clear cells
-        _log('[LevelValidator] Carving portal space by decomposing tile at (${tile.x}, ${tile.y}, w: ${tile.w}, h: ${tile.h})');
+        _log(
+          '[LevelValidator] Carving portal space by decomposing tile at (${tile.x}, ${tile.y}, w: ${tile.w}, h: ${tile.h})',
+        );
         for (int cy = startY; cy < endY; cy++) {
           for (int cx = startX; cx < endX; cx++) {
             if (!clearCells.contains((cx, cy))) {
-              result.add(TileData(
-                type: tile.type,
-                x: cx.toDouble(),
-                y: cy.toDouble(),
-                w: 1,
-                h: 1,
-              ));
+              result.add(
+                TileData(
+                  type: tile.type,
+                  x: cx.toDouble(),
+                  y: cy.toDouble(),
+                  w: 1,
+                  h: 1,
+                ),
+              );
             }
           }
         }
@@ -739,10 +1005,15 @@ class LevelValidator {
     for (int y = 0; y < gridH; y++) {
       int? runStart;
       for (int x = 0; x <= gridW; x++) {
-        final isSurface = x < gridW &&
+        final isSurface =
+            x < gridW &&
             (grid[y][x] == 'block' || grid[y][x] == 'platform') &&
-            (y - 1 >= 0 && grid[y - 1][x] != 'block' && grid[y - 1][x] != 'platform') &&
-            (y - 2 >= 0 && grid[y - 2][x] != 'block' && grid[y - 2][x] != 'platform');
+            (y - 1 >= 0 &&
+                grid[y - 1][x] != 'block' &&
+                grid[y - 1][x] != 'platform') &&
+            (y - 2 >= 0 &&
+                grid[y - 2][x] != 'block' &&
+                grid[y - 2][x] != 'platform');
 
         if (isSurface) {
           runStart ??= x;
@@ -779,7 +1050,11 @@ class LevelValidator {
 
   /// BFS across surfaces using player movement constraints.
   /// Returns the set of all surfaces reachable from [start].
-  static Set<_Surface> _bfsReachability(List<_Surface> surfaces, _Surface start, List<List<String?>> grid) {
+  static Set<_Surface> _bfsReachability(
+    List<_Surface> surfaces,
+    _Surface start,
+    List<List<String?>> grid,
+  ) {
     final visited = <_Surface>{start};
     final queue = <_Surface>[start];
 
@@ -818,12 +1093,12 @@ class LevelValidator {
     // --- Combined reachability using parabolic jump model ---
     // Player physics (in tiles, 1 tile = 32px):
     //   moveSpeed = 200px/s = 6.25 tiles/s
-    //   jumpForce = 400px/s = 12.5 tiles/s  
+    //   jumpForce = 400px/s = 12.5 tiles/s
     //   gravity = 900px/s² = 28.125 tiles/s²
     //   dodgeSpeed = 450px/s for 0.2s = 2.81 tiles bonus
     //   double jump available
     //
-    // For a double jump, max height is reached when the player 
+    // For a double jump, max height is reached when the player
     // uses both jumps optimally. We model the "reachable envelope":
     //   - Time in air with double jump ≈ 1.5s
     //   - At time t, horizontal distance = 6.25*t + 2.81 (with dodge)
@@ -878,7 +1153,7 @@ class LevelValidator {
 
     for (int x = leftX; x <= rightX && x < gridW; x++) {
       if (x < 0) continue;
-      
+
       // Check if this column is completely blocked (wall from top to bottom of path)
       bool columnBlocked = true;
       for (int y = max(0, minY); y <= min(maxY, gridH - 1); y++) {
@@ -894,8 +1169,10 @@ class LevelValidator {
       // Check if a passable 2-tile vertical gap exists in this column
       bool hasPassableGap = false;
       for (int y = max(0, minY); y < min(maxY, gridH - 1); y++) {
-        if (grid[y][x] != 'block' && grid[y][x] != 'platform' &&
-            grid[y + 1][x] != 'block' && grid[y + 1][x] != 'platform') {
+        if (grid[y][x] != 'block' &&
+            grid[y][x] != 'platform' &&
+            grid[y + 1][x] != 'block' &&
+            grid[y + 1][x] != 'platform') {
           hasPassableGap = true;
           break;
         }
@@ -917,7 +1194,9 @@ class LevelValidator {
     int mapHeight,
   ) {
     final bridges = <TileData>[];
-    final unreachable = allSurfaces.where((s) => !reachable.contains(s)).toList();
+    final unreachable = allSurfaces
+        .where((s) => !reachable.contains(s))
+        .toList();
 
     if (unreachable.isEmpty) return bridges;
 
@@ -950,7 +1229,10 @@ class LevelValidator {
     // Calculate how many bridges we need
     final totalHorizDist = (uMidX - rMidX).abs();
     final totalVertDist = (rY - uY).abs();
-    final numBridges = max(1, max(totalHorizDist ~/ maxHorizontalGap, totalVertDist ~/ maxJumpHeight));
+    final numBridges = max(
+      1,
+      max(totalHorizDist ~/ maxHorizontalGap, totalVertDist ~/ maxJumpHeight),
+    );
 
     for (int i = 1; i <= numBridges; i++) {
       final fraction = i / (numBridges + 1);
@@ -961,13 +1243,15 @@ class LevelValidator {
       final clampedX = bx.clamp(0, mapWidth - 3);
       final clampedY = by.clamp(1, mapHeight - 1);
 
-      bridges.add(TileData(
-        type: 'block',
-        x: clampedX.toDouble(),
-        y: clampedY.toDouble(),
-        w: 3,
-        h: 1,
-      ));
+      bridges.add(
+        TileData(
+          type: 'block',
+          x: clampedX.toDouble(),
+          y: clampedY.toDouble(),
+          w: 3,
+          h: 1,
+        ),
+      );
       _log('[LevelValidator] Added bridge platform at ($clampedX, $clampedY)');
     }
 
@@ -1032,14 +1316,18 @@ class LevelValidator {
           final clampedX = bx.clamp(0, mapWidth - 3);
           final clampedY = by.clamp(1, mapHeight - 1);
 
-          result.add(TileData(
-            type: 'platform',
-            x: clampedX.toDouble(),
-            y: clampedY.toDouble(),
-            w: 3,
-            h: 1,
-          ));
-          _log('[LevelValidator] Added visibility bridge platform at ($clampedX, $clampedY) between surfaces');
+          result.add(
+            TileData(
+              type: 'platform',
+              x: clampedX.toDouble(),
+              y: clampedY.toDouble(),
+              w: 3,
+              h: 1,
+            ),
+          );
+          _log(
+            '[LevelValidator] Added visibility bridge platform at ($clampedX, $clampedY) between surfaces',
+          );
         }
       }
     }
@@ -1088,14 +1376,18 @@ class LevelValidator {
   // ========================================================================
 
   /// Build a 2D grid of tile types for O(1) lookups.
-  static List<List<String?>> _buildGrid(List<TileData> tiles, int mapWidth, int mapHeight) {
+  static List<List<String?>> _buildGrid(
+    List<TileData> tiles,
+    int mapWidth,
+    int mapHeight,
+  ) {
     final w = mapWidth + 10;
     final h = mapHeight + 10;
     final grid = List.generate(h, (_) => List<String?>.filled(w, null));
 
     for (final tile in tiles) {
       if (tile.type != 'block' && tile.type != 'platform') continue;
-      
+
       final startX = tile.x.round();
       final startY = tile.y.round();
       final endX = (tile.x + tile.w).round();
@@ -1126,7 +1418,10 @@ class _Surface {
 
   @override
   bool operator ==(Object other) =>
-      other is _Surface && startX == other.startX && endX == other.endX && y == other.y;
+      other is _Surface &&
+      startX == other.startX &&
+      endX == other.endX &&
+      y == other.y;
 
   @override
   int get hashCode => Object.hash(startX, endX, y);

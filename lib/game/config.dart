@@ -330,7 +330,7 @@ class GameConfig {
   static const int minEnemiesPerLevel = 6;
 
   /// Camera zoom level for gameplay.
-  static const double cameraZoom = 2.0;
+  static const double cameraZoom = 1.0;
 
   // --- Combat Rewards ---
   /// Resolve gained when dodging through a projectile.

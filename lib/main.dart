@@ -195,6 +195,7 @@ class _TouchControls extends StatelessWidget {
                           label: 'INDOMITABLE',
                           onDown: () => game.player.activateIndomitable(),
                           color: const Color(0xFFFF9900),
+                          large: true,
                         ),
                         _ControlButton(
                           icon: Icons.arrow_upward,

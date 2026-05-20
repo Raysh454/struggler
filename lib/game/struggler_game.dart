@@ -71,6 +71,10 @@ class StruggleGame extends FlameGame
   /// Prevents re-triggering difficulty generation
   bool _difficultyTriggered = false;
 
+  /// Generation counter — incremented each time a new difficulty request fires.
+  /// Stale callbacks check this to avoid applying outdated multipliers.
+  int _difficultyGenId = 0;
+
   /// Prevents onLevelComplete from being called multiple times
   bool _isTransitioning = false;
   bool get isTransitioning => _isTransitioning;
@@ -204,9 +208,7 @@ class StruggleGame extends FlameGame
 
     // Build level components
     final components = await LevelManager.buildLevel(this, levelData, theme);
-    for (final component in components) {
-      world.add(component);
-    }
+    await world.addAll(components);
 
     // Add Parallax Background to camera backdrop (stays static on screen)
     camera.backdrop.children.whereType<ParallaxComponent>().forEach(
@@ -238,7 +240,7 @@ class StruggleGame extends FlameGame
         ? _previousPlayerPosition!
         : LevelManager.getSpawnPosition(levelData);
     player = Player(position: spawnPos);
-    world.add(player);
+    await world.add(player);
 
     // Spawn companion cat "Hope" right next to player
     final catPosition = (isReturnFromPortal && _previousPlayerPosition != null)
@@ -246,7 +248,7 @@ class StruggleGame extends FlameGame
               Vector2(player.facingDirection * GameConfig.catFollowOffset, 0)
         : spawnPos - Vector2(16, 0);
     final cat = CompanionCat(position: catPosition);
-    world.add(cat);
+    await world.add(cat);
 
     // Set up camera to follow player instantly at spawn
     camera.viewfinder.position = spawnPos;
@@ -267,12 +269,13 @@ class StruggleGame extends FlameGame
     // Reset flags
     lowHealthTauntTriggered = false;
 
-    print(
-      '[StruggleGame] Level $levelId loaded. Architect Dialogue: "${levelData.architectDialogue}"',
-    );
-    print(
-      '[StruggleGame] Level $levelId narrative events: ${levelData.narrativeEvents.map((e) => "${e.condition}:${e.dialogue}").toList()}',
-    );
+    print('');
+    print('┌───────────────────────────────────────────────────────────');
+    print('│  🎮  LEVEL $levelId LOADED');
+    print('│  💬 Dialogue: "${levelData.architectDialogue ?? 'None'}"');
+    print('│  📜 Narrative Events: ${levelData.narrativeEvents.length}');
+    print('└───────────────────────────────────────────────────────────');
+    print('');
 
     // Determine the active dialogue, using an immersive default fallback if none was generated yet (e.g. at the start of Level 1)
     String? dialog = levelData.architectDialogue;
@@ -338,14 +341,12 @@ class StruggleGame extends FlameGame
 
   void _prefetchNextMapLayout(int nextLevelId) {
     if (nextLevelId == 10) {
-      print(
-        '[StruggleGame] Level $nextLevelId is the hardcoded boss fight. Skipping AI generation.',
-      );
+      print('│  ⚔️  Level $nextLevelId is the hardcoded boss fight. Skipping AI prefetch.');
       nextMapLayoutFuture = null;
       return;
     }
     if (nextMapLayoutFuture != null) return;
-    print('[StruggleGame] Prefetching map layout for level $nextLevelId...');
+    print('\n🔄 Prefetching map layout for Level $nextLevelId in background...');
 
     final telemetry = _buildMapTelemetry(nextLevelId);
     _targetPrefetchLevelId = nextLevelId;
@@ -364,14 +365,10 @@ class StruggleGame extends FlameGame
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       if (_targetPrefetchLevelId != levelId) {
-        print(
-          '[StruggleGame] Aborting orphaned map generation for level $levelId (Target is now $_targetPrefetchLevelId).',
-        );
+        print('│  ⚠️  Aborting orphaned generation for Level $levelId (target now $_targetPrefetchLevelId)');
         return null;
       }
-      print(
-        '[StruggleGame] Map Layout Generation Attempt $attempt of $maxRetries for level $levelId...',
-      );
+      print('\n🔁 Map Generation Attempt $attempt/$maxRetries for Level $levelId...');
       try {
         final currentTelemetry = Map<String, dynamic>.from(telemetry);
         if (failedAttemptsFeedback.isNotEmpty) {
@@ -380,9 +377,7 @@ class StruggleGame extends FlameGame
 
         final json = await architectAgent.generateMapLayout(currentTelemetry);
         if (json == null) {
-          print(
-            '[StruggleGame] Attempt $attempt failed: Agent returned null response.',
-          );
+          print('│  ⚠️  Attempt $attempt: Agent returned null response.');
           failedAttemptsFeedback.add({
             'attempt': attempt,
             'status': 'Failed: Agent returned empty/null response.',
@@ -390,9 +385,7 @@ class StruggleGame extends FlameGame
           continue;
         }
         if (!json.containsKey('levelBlueprint')) {
-          print(
-            '[StruggleGame] Attempt $attempt failed: Response missing levelBlueprint.',
-          );
+          print('│  ⚠️  Attempt $attempt: Response missing levelBlueprint.');
           failedAttemptsFeedback.add({
             'attempt': attempt,
             'status': 'Failed: Response missing levelBlueprint.',
@@ -403,9 +396,7 @@ class StruggleGame extends FlameGame
         final levelData = _parseLevelDataFromAI(levelId, json);
 
         if (_targetPrefetchLevelId != levelId) {
-          print(
-            '[StruggleGame] Aborting orphaned map generation for level $levelId after AI fetch (Target is now $_targetPrefetchLevelId).',
-          );
+          print('│  ⚠️  Aborting orphaned generation for Level $levelId (target now $_targetPrefetchLevelId)');
           return null;
         }
 
@@ -416,9 +407,7 @@ class StruggleGame extends FlameGame
         );
 
         if (LevelValidator.isSolvable(validated)) {
-          print(
-            '[StruggleGame] Success: Map layout for level $levelId is solvable after $attempt attempts.',
-          );
+          print('│  ✅  Level $levelId is SOLVABLE after $attempt attempt(s).');
 
           lastLevelValidatorFeedback = {
             'levelId': levelId,
@@ -428,9 +417,7 @@ class StruggleGame extends FlameGame
 
           return validated;
         } else {
-          print(
-            '[StruggleGame] Attempt $attempt failed: Level is unsolvable/unrepairable.',
-          );
+          print('│  ❌  Attempt $attempt: Level is unsolvable/unrepairable.');
           failedAttemptsFeedback.add({
             'attempt': attempt,
             'status': 'Failed: Unsolvable level.',
@@ -438,16 +425,14 @@ class StruggleGame extends FlameGame
           });
         }
       } catch (e) {
-        print('[StruggleGame] Attempt $attempt failed with exception: $e');
+        print('│  ❌  Attempt $attempt exception: $e');
         failedAttemptsFeedback.add({
           'attempt': attempt,
           'status': 'Failed with error: $e',
         });
       }
     }
-    print(
-      '[StruggleGame] WARNING: All $maxRetries map generation attempts failed for level $levelId. Falling back.',
-    );
+    print('│  ⚠️  WARNING: All $maxRetries attempts failed for Level $levelId. Using hardcoded fallback.');
     return null;
   }
 
@@ -467,9 +452,7 @@ class StruggleGame extends FlameGame
         .whereType<BaseEnemy>()
         .where((e) => !e.isDead)
         .length;
-    print(
-      '[StruggleGame] Triggering difficulty generation for level $nextLevelId ($aliveEnemies enemies remaining)...',
-    );
+    print('\n⚡ Triggering live difficulty tuning for Level $nextLevelId ($aliveEnemies enemies remaining)...');
 
     final telemetry = <String, dynamic>{
       'requestType': 'DIFFICULTY_TUNING',
@@ -483,6 +466,10 @@ class StruggleGame extends FlameGame
       'currentLevelPerformance': playerState.toLiveTelemetry(),
     };
 
+    // Bump generation counter so any in-flight callback from a previous request is ignored
+    _difficultyGenId++;
+    final currentGenId = _difficultyGenId;
+
     final future = architectAgent.generateDifficulty(telemetry);
     nextDifficultyFuture = future;
     nextDifficultyParams = null; // Reset for new generation
@@ -490,6 +477,11 @@ class StruggleGame extends FlameGame
     // Dynamically apply to the CURRENT level as well when resolved!
     future
         .then((difficultyParams) {
+          // Discard stale result if a newer request has been fired
+          if (_difficultyGenId != currentGenId) {
+            print('│  ⏩  Discarding stale difficulty response (gen $currentGenId, current $_difficultyGenId)');
+            return;
+          }
           nextDifficultyParams = difficultyParams;
           if (difficultyParams != null && gameState.currentLevel != -1) {
             final damageMult =
@@ -501,9 +493,7 @@ class StruggleGame extends FlameGame
                     ?.toDouble() ??
                 1.0;
 
-            print(
-              '[StruggleGame] Dynamically adjusting difficulty of the CURRENT level ${gameState.currentLevel} on-the-fly!',
-            );
+            print('\n🔥 Dynamically adjusting CURRENT Level ${gameState.currentLevel} difficulty on-the-fly! (dmg×$damageMult, hp×$healthMult)');
 
             final oldDamageMult =
                 cachedActiveLevel?.enemyDamageMultiplier ?? 1.0;
@@ -533,9 +523,7 @@ class StruggleGame extends FlameGame
           }
         })
         .catchError((e) {
-          print(
-            '[StruggleGame] Dynamic difficulty adjustment on-the-fly failed: $e',
-          );
+          print('│  ❌  Dynamic difficulty adjustment failed: $e');
         });
   }
 
@@ -743,9 +731,10 @@ class StruggleGame extends FlameGame
       return;
     }
     _isTransitioning = true;
-    print(
-      '[StruggleGame] Exit portal interacted! Initiating level completion and transitioning...',
-    );
+    print('');
+    print('═══════════════════════════════════════════════════════════');
+    print('  🚪  LEVEL COMPLETE — Transitioning to Level ${gameState.currentLevel + 1}...');
+    print('═══════════════════════════════════════════════════════════');
 
     removedEntitiesKeys.clear();
     gameState.completeLevel();
@@ -761,25 +750,21 @@ class StruggleGame extends FlameGame
     LevelData? nextLevel;
     if (mapFuture != null) {
       print(
-        '[StruggleGame] Awaiting next level map layout generation from AI Architect...',
+        '│  ⏳ Awaiting pre-fetched map layout from Antigravity Agent...',
       );
       try {
         nextLevel = await mapFuture.timeout(const Duration(seconds: 1));
-        print('[StruggleGame] Next level map layout generation resolved.');
+        print('│  ✅  Map layout resolved successfully.');
       } catch (e) {
-        print(
-          '[StruggleGame] ERROR: Map layout generation failed or timed out: $e.',
-        );
+        print('│  ⚠️  Map layout generation timed out or failed: $e');
       }
     } else {
-      print('[StruggleGame] No pre-fetched map layout future found.');
+      print('│  ⚠️  No pre-fetched map layout found.');
     }
 
     if (nextLevel == null) {
       final fallbackId = _getNextFallbackLevelId();
-      print(
-        '[StruggleGame] Falling back to hardcoded test level $fallbackId for Level ${gameState.currentLevel}...',
-      );
+      print('│  🔄 Falling back to hardcoded level $fallbackId for Level ${gameState.currentLevel}');
       nextLevel = LevelManager.createHardcodedLevel(fallbackId);
     }
 
@@ -788,16 +773,12 @@ class StruggleGame extends FlameGame
     nextDifficultyParams = null; // Reset / consume
 
     if (difficultyParams != null) {
-      print(
-        '[StruggleGame] Next level difficulty parameters were already resolved. Merging into level ${gameState.currentLevel}',
-      );
+      print('│  ✅  Difficulty params resolved — merging into Level ${gameState.currentLevel}');
       if (nextLevel != null) {
         nextLevel = _mergeDifficulty(nextLevel, difficultyParams);
       }
     } else {
-      print(
-        '[StruggleGame] Difficulty parameters are still generating or failed. Moving on immediately and sticking to the current difficulty.',
-      );
+      print('│  ⏩  Difficulty not ready — carrying forward current multipliers.');
       if (nextLevel != null && cachedActiveLevel != null) {
         var currentDamageMult = cachedActiveLevel!.enemyDamageMultiplier;
         var currentHealthMult = cachedActiveLevel!.enemyHealthMultiplier;
@@ -816,9 +797,7 @@ class StruggleGame extends FlameGame
             nextLevel.levelId == 2) {
           currentHealthMult = 1;
         }
-        print(
-          '[StruggleGame] Retaining current level multipliers: Damage=$currentDamageMult, Health=$currentHealthMult',
-        );
+        print('│     Retained: dmg×$currentDamageMult, hp×$currentHealthMult');
         // Only carry forward the old dialogue if the next level doesn't already have its own
         final nextHasOwnDialogue =
             nextLevel.architectDialogue != null &&
@@ -833,9 +812,9 @@ class StruggleGame extends FlameGame
       }
     }
 
-    print(
-      '[StruggleGame] All required assets and data generated. Loading level ${gameState.currentLevel}...',
-    );
+    print('│  🎮  Loading Level ${gameState.currentLevel}...');
+    print('═══════════════════════════════════════════════════════════');
+    print('');
     await loadLevel(gameState.currentLevel, preFetchedLevel: nextLevel);
     _isTransitioning = false;
   }

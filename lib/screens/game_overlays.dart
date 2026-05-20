@@ -199,6 +199,9 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
               width: 420,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.9,
+              ),
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.7),
@@ -210,9 +213,10 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
                   width: 2,
                 ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                   // Title
                   const Text(
                     'GUARDIAN UPGRADES',
@@ -341,6 +345,7 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
                     },
                   ),
                 ],
+              ),
               ),
             ),
           ),
