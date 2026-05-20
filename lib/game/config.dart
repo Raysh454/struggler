@@ -11,10 +11,10 @@ class GameConfig {
   static const double lavaBleed = 2.0;
 
   // --- Player Starting Defaults ---
-  static const double playerMaxHealthDefault = 100.0;
+  static const double playerMaxHealthDefault = 1000.0;
   static const double playerMaxResolveDefault = 100.0;
   static const double playerMaxStaminaDefault = 100.0;
-  static const double playerSwordDamageDefault = 25.0;
+  static const double playerSwordDamageDefault = 2500.0;
 
   // --- Player Physics & Stats ---
   static const double playerMoveSpeed = 200.0;

@@ -51,6 +51,7 @@ class AudioManager {
   static const String sfxLavaDamage = 'lava_damage.wav';
   static const String sfxDiamond = 'diamond.wav';
   static const String sfxHeart = 'heart.wav';
+  static const String sfxIndomitable = 'indomitable.wav';
 
   // Enemy SFX
   static const String sfxBowAttack = 'Bow Attack 2.wav';
@@ -94,6 +95,7 @@ class AudioManager {
         sfxLavaDamage,
         sfxDiamond,
         sfxHeart,
+        sfxIndomitable,
         sfxSelect,
         musicGameplay,
         musicMenu,

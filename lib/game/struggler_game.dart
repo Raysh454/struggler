@@ -62,6 +62,7 @@ class StruggleGame extends FlameGame
   // --- Two-phase AI generation state ---
   /// Phase 1: Map layout for the next level (prefetched at level start with N-1 telemetry)
   Future<LevelData?>? nextMapLayoutFuture;
+  int _targetPrefetchLevelId = -1;
 
   /// Phase 2: Difficulty tuning for the next level (triggered mid-level with live N telemetry)
   Future<Map<String, dynamic>?>? nextDifficultyFuture;
@@ -347,6 +348,7 @@ class StruggleGame extends FlameGame
     print('[StruggleGame] Prefetching map layout for level $nextLevelId...');
 
     final telemetry = _buildMapTelemetry(nextLevelId);
+    _targetPrefetchLevelId = nextLevelId;
     nextMapLayoutFuture = _generateSolvableMapWithRetries(
       nextLevelId,
       telemetry,
@@ -361,6 +363,10 @@ class StruggleGame extends FlameGame
     final List<Map<String, dynamic>> failedAttemptsFeedback = [];
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      if (_targetPrefetchLevelId != levelId) {
+        print('[StruggleGame] Aborting orphaned map generation for level $levelId (Target is now $_targetPrefetchLevelId).');
+        return null;
+      }
       print(
         '[StruggleGame] Map Layout Generation Attempt $attempt of $maxRetries for level $levelId...',
       );
@@ -393,6 +399,11 @@ class StruggleGame extends FlameGame
         }
 
         final levelData = _parseLevelDataFromAI(levelId, json);
+
+        if (_targetPrefetchLevelId != levelId) {
+          print('[StruggleGame] Aborting orphaned map generation for level $levelId after AI fetch (Target is now $_targetPrefetchLevelId).');
+          return null;
+        }
 
         final List<String> feedbackLogs = [];
         final validated = LevelValidator.validate(

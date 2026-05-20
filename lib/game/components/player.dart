@@ -855,6 +855,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   void activateIndomitable() {
     if (game.playerState.resolve >= 100.0 && !game.playerState.isIndomitable) {
       game.playerState.isIndomitable = true;
+      AudioManager.playSfx(AudioManager.sfxIndomitable);
     }
   }
 
