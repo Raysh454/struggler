@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../../config.dart';
+import '../../systems/audio_manager.dart';
 import '../enemy.dart';
 import '../player.dart';
 import '../projectile.dart';
@@ -258,6 +259,7 @@ class ArcaneArcherEnemy extends RangedEnemy {
       direction: facingDirection,
       targetVector: targetVector,
     ));
+    AudioManager.playSfx(AudioManager.sfxBowAttack);
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'game/struggler_game.dart';
+import 'game/systems/audio_manager.dart';
 import 'screens/game_overlays.dart';
 
 void main() {
@@ -37,6 +38,12 @@ class _StruggleAppState extends State<StruggleApp> {
   }
 
   @override
+  void dispose() {
+    AudioManager.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -48,13 +55,17 @@ class _StruggleAppState extends State<StruggleApp> {
             GameWidget(
               game: _game,
               overlayBuilderMap: {
-                'MainMenu': (context, StruggleGame game) => MainMenuOverlay(game: game),
-                'GuardianUpgrades': (context, StruggleGame game) => GuardianUpgradesOverlay(game: game),
-                'ArchitectTopRightDialogue': (context, StruggleGame game) => TopRightDialogueOverlay(
-                  dialogue: game.currentArchitectDialogue ?? '...',
-                  game: game,
-                ),
-                'BossChoiceOverlay': (context, StruggleGame game) => BossChoiceOverlay(game: game),
+                'MainMenu': (context, StruggleGame game) =>
+                    MainMenuOverlay(game: game),
+                'GuardianUpgrades': (context, StruggleGame game) =>
+                    GuardianUpgradesOverlay(game: game),
+                'ArchitectTopRightDialogue': (context, StruggleGame game) =>
+                    TopRightDialogueOverlay(
+                      dialogue: game.currentArchitectDialogue ?? '...',
+                      game: game,
+                    ),
+                'BossChoiceOverlay': (context, StruggleGame game) =>
+                    BossChoiceOverlay(game: game),
               },
             ),
 
@@ -130,7 +141,10 @@ class _TouchControls extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment
+                      .end, // Saps the entire line to the absolute bottom
                   children: [
+                    // 1. Bottom-row baseline items: INTERACT and RESOLVE
                     _ControlButton(
                       icon: Icons.auto_awesome,
                       label: 'INTRACT',
@@ -138,7 +152,9 @@ class _TouchControls extends StatelessWidget {
                         if (game.isCutscenePlaying) {
                           game.skipCutscene();
                         } else if (game.player.currentPortal != null) {
-                          game.transitionThroughPortal(isReturn: game.player.currentPortal!.isReturn);
+                          game.transitionThroughPortal(
+                            isReturn: game.player.currentPortal!.isReturn,
+                          );
                         } else if (game.player.currentGuardian != null) {
                           game.openGuardianUpgrades();
                         }
@@ -146,40 +162,57 @@ class _TouchControls extends StatelessWidget {
                       color: const Color(0xFF00E5FF),
                     ),
                     const SizedBox(width: 8),
-                    _ControlButton(
-                      icon: Icons.favorite,
-                      label: 'HEAL',
-                      onDown: () => game.player.triggerHopeHeal(),
-                      color: const Color(0xFF00FF88),
+
+                    // 2. Column for HEAL (top) and DODGE (bottom)
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ControlButton(
+                          icon: Icons.favorite,
+                          label: 'HEAL',
+                          onDown: () => game.player.triggerHopeHeal(),
+                          color: const Color(0xFF00FF88),
+                        ),
+                        const SizedBox(
+                          height: 6,
+                        ), // Kept tight to pack them closer
+                        _ControlButton(
+                          icon: Icons.shield,
+                          label: 'DODGE',
+                          onDown: () => game.player.dodgePressed = true,
+                          color: const Color(0xFF4488FF),
+                        ),
+                      ],
                     ),
                     const SizedBox(width: 8),
-                    _ControlButton(
-                      icon: Icons.whatshot,
-                      label: 'RESOLVE',
-                      onDown: () => game.player.activateIndomitable(),
-                      color: const Color(0xFFFF9900),
-                    ),
-                    const SizedBox(width: 8),
-                    _ControlButton(
-                      icon: Icons.shield,
-                      label: 'DODGE',
-                      onDown: () => game.player.dodgePressed = true,
-                      color: const Color(0xFF4488FF),
-                    ),
-                    const SizedBox(width: 8),
-                    _ControlButton(
-                      icon: Icons.flash_on,
-                      label: 'ATK',
-                      onDown: () => game.player.attackPressed = true,
-                      color: const Color(0xFFFF4444),
-                    ),
-                    const SizedBox(width: 8),
-                    _ControlButton(
-                      icon: Icons.arrow_upward,
-                      label: 'JUMP',
-                      onDown: () => game.player.jumpPressed = true,
-                      color: const Color(0xFF44FF44),
-                      large: true,
+
+                    // 3. Column for JUMP (top) and LARGE ATK (bottom)
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ControlButton(
+                          icon: Icons.whatshot,
+                          label: 'RESOLVE',
+                          onDown: () => game.player.activateIndomitable(),
+                          color: const Color(0xFFFF9900),
+                        ),
+                        _ControlButton(
+                          icon: Icons.arrow_upward,
+                          label: 'JUMP',
+                          onDown: () => game.player.jumpPressed = true,
+                          color: const Color(0xFF44FF44),
+                        ),
+                        const SizedBox(
+                          height: 6,
+                        ), // Kept tight to pack them closer
+                        _ControlButton(
+                          icon: Icons.flash_on,
+                          label: 'ATK',
+                          onDown: () => game.player.attackPressed = true,
+                          color: const Color(0xFFFF4444),
+                          large: true,
+                        ),
+                      ],
                     ),
                   ],
                 ),

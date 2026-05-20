@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../game/struggler_game.dart';
 import '../game/config.dart';
+import '../game/systems/audio_manager.dart';
 
 /// Glassmorphic button for premium styling.
 class GlassButton extends StatefulWidget {
@@ -32,7 +33,12 @@ class _GlassButtonState extends State<GlassButton> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
-        onTap: widget.enabled ? widget.onTap : null,
+        onTap: widget.enabled
+            ? () {
+                AudioManager.playSfx(AudioManager.sfxSelect);
+                widget.onTap();
+              }
+            : null,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
@@ -86,74 +92,87 @@ class MainMenuOverlay extends StatelessWidget {
   const MainMenuOverlay({super.key, required this.game});
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Center(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              width: 400,
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: const Color(0xFFFF2E63).withValues(alpha: 0.4),
-                  width: 2,
-                ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Game Logo Title
-                  const Text(
-                    'STRUGGLER',
-                    style: TextStyle(
-                      fontFamily: 'Gotfridus',
-                      color: Color(0xFFFF2E63),
-                      fontSize: 42,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 4,
-                      shadows: [
-                        Shadow(color: Color(0xAAFF2E63), blurRadius: 16),
-                      ],
-                    ),
-                  ),
-                  const Text(
-                    "THE ARCHITECT'S TRIAL",
-                    style: TextStyle(
-                      fontFamily: 'Gotfridus',
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
+      body: Stack(
+        children: [
+          // Full-screen background image layer
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/panels/background.png',
+              fit: BoxFit.cover,
+            ),
+          ),
 
-                  // Actions
-                  GlassButton(
-                    label: 'BEGIN TRIAL',
-                    color: const Color(0xFFFF2E63),
-                    onTap: () {
-                      game.overlays.remove('MainMenu');
-                      game.resumeEngine();
-                      game.showControlsNotifier.value = true;
-                    },
+          // Menu card UI floating overlay layer
+          Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  width: 400,
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFFFF2E63).withValues(alpha: 0.4),
+                      width: 2,
+                    ),
                   ),
-                ],
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Game Logo Title
+                      const Text(
+                        'STRUGGLER',
+                        style: TextStyle(
+                          fontFamily: 'Gotfridus',
+                          color: Color(0xFFFF2E63),
+                          fontSize: 42,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 4,
+                          shadows: [
+                            Shadow(color: Color(0xAAFF2E63), blurRadius: 16),
+                          ],
+                        ),
+                      ),
+                      const Text(
+                        "THE ARCHITECT'S TRIAL",
+                        style: TextStyle(
+                          fontFamily: 'Gotfridus',
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Actions
+                      GlassButton(
+                        label: 'BEGIN TRIAL',
+                        color: const Color(0xFFFF2E63),
+                        onTap: () {
+                          game.overlays.remove('MainMenu');
+                          game.resumeEngine();
+                          game.showControlsNotifier.value = true;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
-
 
 /// The Guardian Upgrades Overlay to buy stats upgrades using willpower and diamonds.
 class GuardianUpgradesOverlay extends StatefulWidget {
@@ -488,7 +507,12 @@ class _UpgradeItem extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               GestureDetector(
-                onTap: canUpgrade ? onUpgrade : null,
+                onTap: canUpgrade
+                    ? () {
+                        AudioManager.playSfx(AudioManager.sfxSelect);
+                        onUpgrade();
+                      }
+                    : null,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -751,7 +775,9 @@ class _BossChoiceOverlayState extends State<BossChoiceOverlay> {
         if (_choiceMade)
           AnimatedContainer(
             duration: const Duration(seconds: 2),
-            color: _fadeToWhite ? Colors.white : Colors.black.withValues(alpha: 0.8),
+            color: _fadeToWhite
+                ? Colors.white
+                : Colors.black.withValues(alpha: 0.8),
             curve: Curves.easeIn,
             child: Center(
               child: TweenAnimationBuilder<double>(

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart' hide Block;
 import 'package:flutter/services.dart';
+import '../systems/audio_manager.dart';
 import '../asset_registry.dart';
 import '../config.dart';
 import '../components/block.dart';
@@ -41,6 +42,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   static const double maxFallSpeed = GameConfig.playerMaxFallSpeed;
   Vector2 velocity = Vector2.zero();
   bool isOnGround = false;
+  bool _wasOnGround = false;
   Vector2? lastSafePosition;
   int _facingDirection = 1; // 1 = right, -1 = left
   int get facingDirection => _facingDirection;
@@ -250,6 +252,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
           _plungeHitEnemies.add(enemy);
           final damage = game.playerState.effectiveDamage;
           final killed = enemy.takeDamage(damage, isPlunge: true);
+          AudioManager.playSfx(AudioManager.sfxSwordHit1);
           if (game.playerState.isIndomitable) {
             game.playerState.heal(damage * GameConfig.playerIndomitableLifestealRatio);
           }
@@ -269,9 +272,17 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     _handleAttack(dt);
     _handleDodge(dt);
     _handleMovement(dt);
+
+    if (isOnGround && velocity.x != 0 && !_isAttacking && !_isDodging && !game.isCutscenePlaying) {
+      AudioManager.playFootstep(dt);
+    } else {
+      AudioManager.resetFootstepTimer();
+    }
+
     _applyGravity(dt);
     _applyVelocity(dt);
     _updateAnimation();
+    _wasOnGround = isOnGround;
     isOnGround = false; // Assume we are in air until collision confirms otherwise
   }
 
@@ -448,12 +459,14 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
             _coyoteTimer = 0;
             _jumpBufferTimer = 0;
             _jumpsRemaining = _maxJumps - 1;
+            AudioManager.playSfx(AudioManager.sfxJump);
           }
         } else if (_jumpsRemaining > 0) {
           // Air jump (double jump)
           velocity.y = jumpForce;
           _jumpsRemaining = 0;
           _jumpBufferTimer = 0;
+          AudioManager.playSfx(AudioManager.sfxJump);
         }
       }
     }
@@ -495,6 +508,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
             _attackTimer = attackDuration;
             _attackDamageDelayTimer = attackDuration * GameConfig.playerAttackDamageDelayRatio;
             _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
+            AudioManager.playPlayerAttack(_comboStep);
           } else {
             // Cancel queued combo because of insufficient stamina
             _comboQueued = false;
@@ -528,6 +542,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
           velocity.x = 0;
           velocity.y = 0;
           _airHangTimer = GameConfig.playerPlungeDelay; // Use plunge delay config
+          AudioManager.playSfx(AudioManager.sfxPlungeAttack);
         }
       } else if (isOnGround && !_isAttacking && _attackCooldownTimer <= 0 && _comboWindowTimer <= 0) {
         final cost = GameConfig.playerStaminaAttackCost;
@@ -540,6 +555,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
           _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
           _comboQueued = false;
           attackPressed = false;
+          AudioManager.playPlayerAttack(0);
         }
       } else if (isOnGround && !_isAttacking && _comboWindowTimer > 0) {
         final cost = GameConfig.playerStaminaAttackCost;
@@ -553,6 +569,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
           _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
           _comboQueued = false;
           attackPressed = false;
+          AudioManager.playPlayerAttack(_comboStep);
         }
       }
     }
@@ -587,6 +604,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         }
         _hitStopTimer = hitStopDuration; // Hit-stop for impact feel
         game.onScreenShake(3.0); // Screen shake
+        AudioManager.playSfx(AudioManager.sfxSwordHit1);
         if (killed) {
           game.playerState.enemiesKilled++;
           game.playerState.enemiesKilledThisLevel++;
@@ -615,6 +633,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         game.playerState.stamina -= cost;
         _isDodging = true;
         _dodgeTimer = dodgeDuration;
+        AudioManager.playSfx(AudioManager.sfxDodge);
       }
       dodgePressed = false;
     }
@@ -646,13 +665,14 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     if (other is PlatformBlock) {
       _resolveBlockCollision(other);
     } else if (other is Lava) {
-      receiveDamage(other.damage);
+      receiveDamage(other.damage, soundEffect: AudioManager.sfxLavaDamage);
     } else if (other is Spike) {
-      receiveDamage(other.damage);
+      receiveDamage(other.damage, soundEffect: AudioManager.sfxSpikeDamage);
     } else if (other is HealthPickup && !other.collected) {
       other.collected = true;
       other.removeFromParent();
       game.playerState.heal(other.healAmount);
+      AudioManager.playSfx(AudioManager.sfxHeart);
       
       final tileX = (other.initialPosition.x / GameConfig.tileSize).round();
       final tileY = (other.initialPosition.y / GameConfig.tileSize).round();
@@ -662,6 +682,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       other.collected = true;
       other.removeFromParent();
       game.playerState.diamondsCollected++;
+      AudioManager.playSfx(AudioManager.sfxDiamond);
 
       final tileX = (other.initialPosition.x / GameConfig.tileSize).round();
       final tileY = (other.initialPosition.y / GameConfig.tileSize).round();
@@ -690,9 +711,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       _resolveBlockCollision(other);
     }
     if (other is Lava) {
-      receiveDamage(other.damage);
+      receiveDamage(other.damage, soundEffect: AudioManager.sfxLavaDamage);
     } else if (other is Spike) {
-      receiveDamage(other.damage);
+      receiveDamage(other.damage, soundEffect: AudioManager.sfxSpikeDamage);
     }
   }
 
@@ -716,6 +737,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         if (overlapTop <= size.y * 0.5) {
           position.y = block.position.y - size.y;
           velocity.y = 0;
+          if (!_wasOnGround && !isOnGround) {
+            AudioManager.playSfx(AudioManager.sfxLand);
+          }
           isOnGround = true;
           _jumpsRemaining = _maxJumps;
           if (_isAirAttacking) {
@@ -731,6 +755,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       // Landing on top
       position.y = block.position.y - size.y;
       velocity.y = 0;
+      if (!_wasOnGround && !isOnGround) {
+        AudioManager.playSfx(AudioManager.sfxLand);
+      }
       isOnGround = true;
       _jumpsRemaining = _maxJumps;
       if (_isAirAttacking) {
@@ -752,8 +779,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     }
   }
 
-  void receiveDamage(double damage) {
+  void receiveDamage(double damage, {String? soundEffect}) {
     if (isInvincible || _isDead) return;
+    if (soundEffect != null) AudioManager.playSfx(soundEffect);
     game.playerState.damageTakenThisLevel += damage;
     final died = game.playerState.takeDamage(damage);
     _hurtTimer = GameConfig.playerHurtDuration;
@@ -800,6 +828,12 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
             ? GameConfig.playerPlungeSplashDamage * GameConfig.playerIndomitableDamageMultiplier
             : GameConfig.playerPlungeSplashDamage;
         final killed = enemy.takeDamage(damage);
+        
+        // As requested: play impact sound ONLY for the initial impact
+        if (!_plungeHitEnemies.contains(enemy)) {
+          AudioManager.playSfx(AudioManager.sfxSwordHit1);
+        }
+
         if (game.playerState.isIndomitable) {
           game.playerState.heal(damage * GameConfig.playerIndomitableLifestealRatio);
         }

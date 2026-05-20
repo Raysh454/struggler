@@ -6,6 +6,7 @@ import 'package:flame/components.dart' hide Block;
 import '../components/block.dart';
 import '../config.dart';
 import '../struggler_game.dart';
+import '../systems/audio_manager.dart';
 import 'player.dart';
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,8 @@ abstract class Projectile extends PositionComponent
     required this.damage,
     required this.maxRange,
   }) : super(position: position, size: size);
+
+  void playImpactSound();
 
   @override
   Future<void> onLoad() async {
@@ -67,6 +70,7 @@ abstract class Projectile extends PositionComponent
       if (!other.isInvincible) {
         other.receiveDamage(damage);
         _hasHit = true;
+        playImpactSound();
         removeFromParent();
       } else {
         // Dodge through it — reward resolve if this is the first overlap
@@ -104,6 +108,11 @@ class ArrowProjectile extends Projectile {
          maxRange: GameConfig.arrowRange,
        ) {
     anchor = Anchor.center;
+  }
+
+  @override
+  void playImpactSound() {
+    AudioManager.playSfx(AudioManager.sfxBowHit);
   }
 
   @override
@@ -176,6 +185,11 @@ class OrbProjectile extends Projectile {
        );
 
   @override
+  void playImpactSound() {
+    AudioManager.playSfx(AudioManager.sfxSpellHit);
+  }
+
+  @override
   Vector2 moveStep(double dt) {
     _elapsed += dt;
     final player = game.player;
@@ -239,6 +253,7 @@ class ThunderHandProjectile extends Projectile {
   SpriteAnimationComponent? _animComp;
   double _elapsed = 0;
   bool _hasAppliedDamage = false;
+  bool _hasPlayedImpactSound = false;
 
   ThunderHandProjectile({required super.position})
     : super(
@@ -246,6 +261,11 @@ class ThunderHandProjectile extends Projectile {
         damage: GameConfig.thunderDamage,
         maxRange: GameConfig.thunderHandMaxRange,
       );
+
+  @override
+  void playImpactSound() {
+    // Handled customly in update() when crashing into ground
+  }
 
   @override
   Future<void> onLoad() async {
@@ -294,6 +314,12 @@ class ThunderHandProjectile extends Projectile {
       if (ticker.done()) {
         removeFromParent(); // Auto-remove projectile once the spell animation completes!
         return;
+      }
+
+      // Play the crash sound when the hand strikes down (starts at frame index 4)
+      if (ticker.currentIndex >= 4 && !_hasPlayedImpactSound) {
+        _hasPlayedImpactSound = true;
+        AudioManager.playSfx(AudioManager.sfxThunderImpact);
       }
 
       // Phase 2 Damage Trigger: Apply damage exactly once when the hand strikes down (active only on frame index 4 to 7)

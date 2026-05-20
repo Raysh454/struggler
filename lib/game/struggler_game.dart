@@ -1,5 +1,6 @@
 import "components/architect_cutscene.dart";
 import 'dart:math';
+import 'systems/audio_manager.dart';
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
@@ -110,6 +111,9 @@ class StruggleGame extends FlameGame
     gameState = GameState();
     architectAgent = ArchitectAgent();
 
+    // Preload all audio assets
+    await AudioManager.preloadAll();
+
     // Set up camera
     camera.viewfinder.anchor = Anchor.center;
 
@@ -117,6 +121,7 @@ class StruggleGame extends FlameGame
 
     // Pause game on start to display Main Menu
     overlays.add('MainMenu');
+    AudioManager.playMenuMusic();
     pauseEngine();
   }
 
@@ -254,6 +259,9 @@ class StruggleGame extends FlameGame
 
     // Start level timer
     gameState.startLevel();
+
+    // Switch BGM based on level
+    AudioManager.playMusicForLevel(levelId);
 
     // Reset flags
     lowHealthTauntTriggered = false;
@@ -741,7 +749,7 @@ class StruggleGame extends FlameGame
         '[StruggleGame] Awaiting next level map layout generation from AI Architect...',
       );
       try {
-        nextLevel = await mapFuture.timeout(const Duration(seconds: 20));
+        nextLevel = await mapFuture.timeout(const Duration(seconds: 1));
         print('[StruggleGame] Next level map layout generation resolved.');
       } catch (e) {
         print(
@@ -826,6 +834,12 @@ class StruggleGame extends FlameGame
     playerState.lostWillY = player.lastSafePosition?.y ?? player.position.y;
     playerState.lostWillLevelId = gameState.currentLevel;
 
+    // Reset difficulty trigger so we can calibrate immediately
+    _difficultyTriggered = false;
+
+    // Recalibrate difficulty immediately upon player death (using latest live telemetry)
+    _triggerDifficultyGeneration(gameState.currentLevel + 1);
+
     playerState.resetForRetry();
 
     // Trigger dynamic Architect taunt on death!
@@ -884,6 +898,7 @@ class StruggleGame extends FlameGame
 
   /// Transition the player between the active level and the Guardian's Realm.
   void transitionThroughPortal({required bool isReturn}) {
+    AudioManager.playSfx(AudioManager.sfxSelect);
     if (isReturn) {
       // Returning to main level from Guardian Realm
       final targetLevel = _previousLevelId ?? 1;
@@ -923,6 +938,7 @@ class StruggleGame extends FlameGame
 
   /// Open the Guardian Upgrades overlay.
   void openGuardianUpgrades() {
+    AudioManager.playSfx(AudioManager.sfxSelect);
     showControlsNotifier.value = false;
     pauseEngine();
     overlays.add('GuardianUpgrades');
@@ -1011,6 +1027,7 @@ class StruggleGame extends FlameGame
 
   /// Called when Architect dies and animation finishes
   void onBossDefeated() {
+    AudioManager.stopBgm();
     overlays.add('BossChoiceOverlay');
   }
 }

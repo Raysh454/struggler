@@ -346,12 +346,11 @@ class LevelManager {
           TileData(type: 'platform', x: 25, y: 10, w: 3, h: 1),
         ],
         enemies: [
-          EnemyData(x: 11, y: 14, type: 'nightborne', patrolRange: 2),
+          EnemyData(x: 11, y: 14, type: 'skeleton', patrolRange: 2),
           EnemyData(x: 24, y: 18, type: 'bringer', patrolRange: 3),
           EnemyData(x: 35, y: 18, type: 'goblin', patrolRange: 3),
           EnemyData(x: 44, y: 13, type: 'archer', patrolRange: 2),
-          EnemyData(x: 53, y: 15, type: 'wizard', patrolRange: 2),
-          EnemyData(x: 48, y: 18, type: 'nightborne', patrolRange: 1),
+          EnemyData(x: 48, y: 18, type: 'skeleton', patrolRange: 1),
         ],
         pickups: [
           PickupData(type: 'health', x: 35, y: 15),

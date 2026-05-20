@@ -7,7 +7,9 @@ environment:
   sdk: ^3.11.5
 
 dependencies:
+  audioplayers: ^6.6.0
   flame: ^1.37.0
+  flame_audio: ^2.12.0
   flutter:
     sdk: flutter
   google_generative_ai: ^0.4.7
@@ -22,6 +24,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/audio/
     - assets/images/atlas/
     - assets/images/blocks/RockyLevel/
     - assets/images/blocks/Collectible/
@@ -41,6 +44,7 @@ flutter:
     - assets/images/characters/bringer/IndividualSprite/Spell/
     - assets/images/characters/guardian/
     - assets/images/characters/hope/
+    - assets/images/panels/
 
   fonts:
     - family: Gotfridus

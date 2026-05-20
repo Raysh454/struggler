@@ -3,6 +3,7 @@ import 'package:flame/components.dart';
 
 import '../../config.dart';
 import '../../struggler_game.dart';
+import '../../systems/audio_manager.dart';
 import '../player.dart';
 
 /// Expanding ring explosion spawned when a NightbornWarrior dies.
@@ -33,6 +34,7 @@ class ExplosionEffect extends PositionComponent
       final customDamageMult = levelData.enemyDamageMultiplier ?? 1.0;
       damage *= customDamageMult;
     }
+    AudioManager.playSfx(AudioManager.sfxNightborneExplosion);
   }
 
   @override

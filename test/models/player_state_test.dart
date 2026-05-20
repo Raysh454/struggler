@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:struggler/models/player_state.dart';
+import 'package:struggler/game/config.dart';
 
 void main() {
   group('PlayerState', () {
@@ -79,12 +80,15 @@ void main() {
         expect(state.health, 80.0); // 40 / 2 = 20 damage
       });
 
-      test('Indomitable halved damage does not prevent death from massive hit', () {
-        state.isIndomitable = true;
-        final died = state.takeDamage(250);
-        expect(died, true);
-        expect(state.health, 0.0);
-      });
+      test(
+        'Indomitable halved damage does not prevent death from massive hit',
+        () {
+          state.isIndomitable = true;
+          final died = state.takeDamage(250);
+          expect(died, true);
+          expect(state.health, 0.0);
+        },
+      );
     });
 
     group('heal', () {
@@ -175,49 +179,52 @@ void main() {
     });
 
     group('resetFully', () {
-      test('resets all stats, currencies, and upgrades to default start values', () {
-        state.maxHealth = 160.0;
-        state.health = 120.0;
-        state.maxResolve = 140.0;
-        state.resolve = 50.0;
-        state.isIndomitable = true;
-        state.maxStamina = 120.0;
-        state.stamina = 80.0;
-        state.swordDamage = 45.0;
-        state.perfectDodges = 10;
-        state.diamondsCollected = 5;
-        state.willpower = 400;
-        state.healthUpgradeLevel = 4;
-        state.resolveUpgradeLevel = 3;
-        state.staminaUpgradeLevel = 2;
-        state.swordUpgradeLevel = 3;
-        state.catHealUpgradeLevel = 2;
-        state.catHealsRemaining = 1;
-        state.deathCount = 15;
-        state.enemiesKilled = 80;
+      test(
+        'resets all stats, currencies, and upgrades to default start values',
+        () {
+          state.maxHealth = 160.0;
+          state.health = 120.0;
+          state.maxResolve = 140.0;
+          state.resolve = 50.0;
+          state.isIndomitable = true;
+          state.maxStamina = 120.0;
+          state.stamina = 80.0;
+          state.swordDamage = 45.0;
+          state.perfectDodges = 10;
+          state.diamondsCollected = 5;
+          state.willpower = 400;
+          state.healthUpgradeLevel = 4;
+          state.resolveUpgradeLevel = 3;
+          state.staminaUpgradeLevel = 2;
+          state.swordUpgradeLevel = 3;
+          state.catHealUpgradeLevel = 2;
+          state.catHealsRemaining = 1;
+          state.deathCount = 15;
+          state.enemiesKilled = 80;
 
-        state.resetFully();
+          state.resetFully();
 
-        expect(state.maxHealth, 100.0);
-        expect(state.health, 100.0);
-        expect(state.maxResolve, 100.0);
-        expect(state.resolve, 0.0);
-        expect(state.isIndomitable, false);
-        expect(state.maxStamina, 100.0);
-        expect(state.stamina, 100.0);
-        expect(state.swordDamage, 25.0);
-        expect(state.perfectDodges, 0);
-        expect(state.diamondsCollected, 0);
-        expect(state.willpower, 0);
-        expect(state.healthUpgradeLevel, 1);
-        expect(state.resolveUpgradeLevel, 1);
-        expect(state.staminaUpgradeLevel, 1);
-        expect(state.swordUpgradeLevel, 1);
-        expect(state.catHealUpgradeLevel, 1);
-        expect(state.catHealsRemaining, GameConfig.catHealsPerLevel);
-        expect(state.deathCount, 0);
-        expect(state.enemiesKilled, 0);
-      });
+          expect(state.maxHealth, 100.0);
+          expect(state.health, 100.0);
+          expect(state.maxResolve, 100.0);
+          expect(state.resolve, 0.0);
+          expect(state.isIndomitable, false);
+          expect(state.maxStamina, 100.0);
+          expect(state.stamina, 100.0);
+          expect(state.swordDamage, 25.0);
+          expect(state.perfectDodges, 0);
+          expect(state.diamondsCollected, 0);
+          expect(state.willpower, 0);
+          expect(state.healthUpgradeLevel, 1);
+          expect(state.resolveUpgradeLevel, 1);
+          expect(state.staminaUpgradeLevel, 1);
+          expect(state.swordUpgradeLevel, 1);
+          expect(state.catHealUpgradeLevel, 1);
+          expect(state.catHealsRemaining, GameConfig.catHealsPerLevel);
+          expect(state.deathCount, 0);
+          expect(state.enemiesKilled, 0);
+        },
+      );
     });
 
     group('toTelemetry', () {
@@ -280,26 +287,29 @@ void main() {
     });
 
     group('Guardian Upgrades', () {
-      test('upgradeHealth increases maxHealth and costs willpower with 100 * 2^(level-1) math', () {
-        state.willpower = 250;
-        final success = state.upgradeHealth();
-        expect(success, true);
-        expect(state.healthUpgradeLevel, 2);
-        expect(state.maxHealth, 120.0);
-        expect(state.health, 120.0);
-        expect(state.willpower, 150); // 250 - 100 (Level 1 cost: 100)
+      test(
+        'upgradeHealth increases maxHealth and costs willpower with 100 * 2^(level-1) math',
+        () {
+          state.willpower = 250;
+          final success = state.upgradeHealth();
+          expect(success, true);
+          expect(state.healthUpgradeLevel, 2);
+          expect(state.maxHealth, 120.0);
+          expect(state.health, 120.0);
+          expect(state.willpower, 150); // 250 - 100 (Level 1 cost: 100)
 
-        // Upgrade again (Level 2 cost: 200)
-        final success2 = state.upgradeHealth();
-        expect(success2, false); // Not enough willpower (needs 200, has 150)
-        
-        state.willpower = 200;
-        final success3 = state.upgradeHealth();
-        expect(success3, true);
-        expect(state.healthUpgradeLevel, 3);
-        expect(state.maxHealth, 140.0);
-        expect(state.willpower, 0);
-      });
+          // Upgrade again (Level 2 cost: 200)
+          final success2 = state.upgradeHealth();
+          expect(success2, false); // Not enough willpower (needs 200, has 150)
+
+          state.willpower = 200;
+          final success3 = state.upgradeHealth();
+          expect(success3, true);
+          expect(state.healthUpgradeLevel, 3);
+          expect(state.maxHealth, 140.0);
+          expect(state.willpower, 0);
+        },
+      );
 
       test('upgradeResolve increases maxResolve and costs willpower', () {
         state.willpower = 150;
@@ -310,16 +320,19 @@ void main() {
         expect(state.willpower, 50); // 150 - 100
       });
 
-      test('upgradeSword increases swordDamage and costs willpower + 1 diamond', () {
-        state.willpower = 150;
-        state.diamondsCollected = 2;
-        final success = state.upgradeSword();
-        expect(success, true);
-        expect(state.swordUpgradeLevel, 2);
-        expect(state.swordDamage, 35.0); // 25 + 10
-        expect(state.diamondsCollected, 1);
-        expect(state.willpower, 50); // 150 - 100
-      });
+      test(
+        'upgradeSword increases swordDamage and costs willpower + 1 diamond',
+        () {
+          state.willpower = 150;
+          state.diamondsCollected = 2;
+          final success = state.upgradeSword();
+          expect(success, true);
+          expect(state.swordUpgradeLevel, 2);
+          expect(state.swordDamage, 35.0); // 25 + 10
+          expect(state.diamondsCollected, 1);
+          expect(state.willpower, 50); // 150 - 100
+        },
+      );
 
       test('upgrade fails with insufficient resources', () {
         state.willpower = 50;

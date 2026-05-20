@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui';
 import 'package:flame/components.dart';
+import '../systems/audio_manager.dart';
 import '../asset_registry.dart';
 import '../config.dart';
 import '../struggler_game.dart';
@@ -195,7 +196,8 @@ class CompanionCat extends PositionComponent
           if (closestEnemy != null) {
             _attackTarget = closestEnemy;
             _behaviorMode = CatBehaviorMode.attacking;
-            _attackDurationTimer = 0.96; // 8 frames * 0.12 stepTime = 0.96 seconds
+            _attackDurationTimer =
+                0.96; // 8 frames * 0.12 stepTime = 0.96 seconds
             _attackCooldownTimer = GameConfig.catAttackCooldown;
 
             if (_spriteLoaded) {
@@ -211,7 +213,8 @@ class CompanionCat extends PositionComponent
 
         // Standard Smooth Following Logic
         _facingDirection = player.facingDirection;
-        final targetX = player.position.x - (_facingDirection * GameConfig.catFollowOffset);
+        final targetX =
+            player.position.x - (_facingDirection * GameConfig.catFollowOffset);
         final targetY = player.position.y + player.size.y - size.y;
 
         // Smoothly interpolate positions (spring/lerp)
@@ -252,9 +255,11 @@ class CompanionCat extends PositionComponent
           if (_damageDelayTimer <= 0) {
             if (_attackTarget != null && !_attackTarget!.isDead) {
               _attackTarget!.takeDamage(currentDamage);
+              AudioManager.playSfx(AudioManager.sfxHopeAttack);
 
               // Spawn the gorgeous visual scratch slash effect!
-              final enemyCenter = _attackTarget!.position + _attackTarget!.size / 2;
+              final enemyCenter =
+                  _attackTarget!.position + _attackTarget!.size / 2;
               _scratchSlashes.add(
                 ScratchSlash(
                   position: enemyCenter,
@@ -303,6 +308,7 @@ class CompanionCat extends PositionComponent
         if (myCenter.distanceTo(playerCenter) < 14.0) {
           // 1. Perform Heal
           game.playerState.heal(GameConfig.catHealAmount);
+          AudioManager.playSfx(AudioManager.sfxHeart);
 
           // 2. Generate Render Magic Particles around the player!
           for (int i = 0; i < 15; i++) {
@@ -377,8 +383,9 @@ class CompanionCat extends PositionComponent
       canvas.translate(-position.x, -position.y);
 
       for (final p in _healParticles) {
-        final opacityColor = (p.color ?? const Color(0xFF39FF14))
-            .withValues(alpha: p.alpha.clamp(0.0, 1.0)); // Neon green or custom color!
+        final opacityColor = (p.color ?? const Color(0xFF39FF14)).withValues(
+          alpha: p.alpha.clamp(0.0, 1.0),
+        ); // Neon green or custom color!
         final pPaint = Paint()
           ..color = opacityColor
           ..style = PaintingStyle.fill;
@@ -410,7 +417,10 @@ class CompanionCat extends PositionComponent
     // --- Render Gorgeous Neon Claw Slashes ---
     if (_scratchSlashes.isNotEmpty) {
       canvas.save();
-      canvas.translate(-position.x, -position.y); // Translate to absolute world coords
+      canvas.translate(
+        -position.x,
+        -position.y,
+      ); // Translate to absolute world coords
 
       for (final slash in _scratchSlashes) {
         final progress = 1.0 - (slash.lifeTime / slash.maxLifeTime);
@@ -418,13 +428,15 @@ class CompanionCat extends PositionComponent
 
         // Draw 3 parallel claw marks!
         final strokePaint = Paint()
-          ..color = const Color(0xFFFF2E93).withValues(alpha: alpha) // Bright Neon Pink claw
+          ..color = const Color(0xFFFF2E93)
+              .withValues(alpha: alpha) // Bright Neon Pink claw
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3.2 * (1.0 - progress * 0.4)
           ..strokeCap = StrokeCap.round;
 
         final glowPaint = Paint()
-          ..color = const Color(0xFFFFFF00).withValues(alpha: alpha) // Glowing Neon Yellow core
+          ..color = const Color(0xFFFFFF00)
+              .withValues(alpha: alpha) // Glowing Neon Yellow core
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.2
           ..strokeCap = StrokeCap.round;
@@ -546,8 +558,10 @@ class CompanionCat extends PositionComponent
     final player = game.world.children.whereType<Player>().firstOrNull;
     if (player == null || player.isDead) return false;
     if (game.playerState.catHealsRemaining <= 0) return false;
-    if (game.playerState.health >= game.playerState.maxHealth) return false; // Already full health
-    if (_behaviorMode == CatBehaviorMode.healingLeap || _behaviorMode == CatBehaviorMode.healingBounce) {
+    if (game.playerState.health >= game.playerState.maxHealth)
+      return false; // Already full health
+    if (_behaviorMode == CatBehaviorMode.healingLeap ||
+        _behaviorMode == CatBehaviorMode.healingBounce) {
       return false; // Already performing a heal sequence
     }
 

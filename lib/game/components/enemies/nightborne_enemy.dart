@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
 
+import '../../systems/audio_manager.dart';
 import '../../asset_registry.dart';
 import '../../config.dart';
 import '../effects/explosion_effect.dart';
@@ -23,21 +24,20 @@ class NightborneEnemy extends MeleeEnemy {
   bool _spriteLoaded = false;
   bool _exploded = false;
 
-  NightborneEnemy({
-    required super.position,
-  }) : super(
-          size: GameConfig.enemyHitboxNightborne,
-          maxHealth: GameConfig.enemyHealthNightborne,
-          contactDamage: GameConfig.enemyDamageNightborne,
-          speed: GameConfig.enemySpeedNightborne,
-          patrolRange: 130,
-          attackCooldown: 0.9,
-          aggroRange: GameConfig.enemyAggroRangeNightborne,
-          damageDelay: 0.56,
-          attackRange: GameConfig.enemyAttackRangeNightborne,
-          maxVerticalDiff: GameConfig.enemyAttackMaxVerticalDiffNightborne,
-          attackAnimDuration: 0.84,
-        );
+  NightborneEnemy({required super.position})
+    : super(
+        size: GameConfig.enemyHitboxNightborne,
+        maxHealth: GameConfig.enemyHealthNightborne,
+        contactDamage: GameConfig.enemyDamageNightborne,
+        speed: GameConfig.enemySpeedNightborne,
+        patrolRange: 130,
+        attackCooldown: 0.9,
+        aggroRange: GameConfig.enemyAggroRangeNightborne,
+        damageDelay: 0.56,
+        attackRange: GameConfig.enemyAttackRangeNightborne,
+        maxVerticalDiff: GameConfig.enemyAttackMaxVerticalDiffNightborne,
+        attackAnimDuration: 0.84,
+      );
 
   @override
   int get willpowerReward => GameConfig.enemyWillNightborne;
@@ -48,7 +48,7 @@ class NightborneEnemy extends MeleeEnemy {
   @override
   double get healthBarYOffset => GameConfig.enemyHealthBarYOffsetNightborne;
 
-  static final Vector2 _frame      = Vector2(80, 80);
+  static final Vector2 _frame = Vector2(80, 80);
   static final Vector2 _renderSize = GameConfig.enemySizeNightborne;
 
   @override
@@ -122,15 +122,18 @@ class NightborneEnemy extends MeleeEnemy {
 
       _animGroup = SpriteAnimationGroupComponent<_NAnim>(
         animations: {
-          _NAnim.idle:   idle,
-          _NAnim.run:    run,
+          _NAnim.idle: idle,
+          _NAnim.run: run,
           _NAnim.attack: attack,
-          _NAnim.hurt:   hurt,
-          _NAnim.death:  death,
+          _NAnim.hurt: hurt,
+          _NAnim.death: death,
         },
         current: _NAnim.idle,
         size: _renderSize,
-        position: Vector2(size.x / 2, size.y + GameConfig.enemyYOffsetNightborne),
+        position: Vector2(
+          size.x / 2,
+          size.y + GameConfig.enemyYOffsetNightborne,
+        ),
         anchor: Anchor.bottomCenter,
       );
       add(_animGroup!);
@@ -141,12 +144,19 @@ class NightborneEnemy extends MeleeEnemy {
 
   @override
   void onMeleeSwing(Player player) {
-    super.onMeleeSwing(player);
+    // We intentionally do not call super.onMeleeSwing(player) here
+    // because we want the attack sound to play during the downward swing (onMeleeStrike).
     if (_spriteLoaded && _animGroup != null) {
       _current = _NAnim.attack;
       _animGroup!.current = _NAnim.attack;
       _animGroup!.animationTickers?[_NAnim.attack]?.reset();
     }
+  }
+
+  @override
+  void onMeleeStrike() {
+    super.onMeleeStrike();
+    AudioManager.playSfx(AudioManager.sfxNightborneAttack);
   }
 
   @override
@@ -164,7 +174,10 @@ class NightborneEnemy extends MeleeEnemy {
 
       final player = playerTarget;
       if (player != null) {
-        final pushDir = (position.x + size.x / 2) > (player.position.x + player.size.x / 2) ? 1.0 : -1.0;
+        final pushDir =
+            (position.x + size.x / 2) > (player.position.x + player.size.x / 2)
+            ? 1.0
+            : -1.0;
         stagger(pushDir * GameConfig.enemyNightborneStaggerForce);
       }
     }
@@ -187,9 +200,7 @@ class NightborneEnemy extends MeleeEnemy {
         if (currentFrame >= 11 && !_exploded) {
           _exploded = true;
           // Spawn the explosion exactly on the 12th frame of death!
-          parent?.add(ExplosionEffect(
-            center: position + size / 2,
-          ));
+          parent?.add(ExplosionEffect(center: position + size / 2));
         }
 
         if (deathTicker.done()) {
@@ -215,7 +226,7 @@ class NightborneEnemy extends MeleeEnemy {
     if (_current != _NAnim.attack && _current != _NAnim.hurt) {
       final newAnim = switch (currentState) {
         MeleeState.patrol => _NAnim.run,
-        MeleeState.chase  => isStationary ? _NAnim.idle : _NAnim.run,
+        MeleeState.chase => isStationary ? _NAnim.idle : _NAnim.run,
         MeleeState.attack => _NAnim.idle,
       };
       if (newAnim != _current) {

@@ -1,4 +1,5 @@
 import '../../config.dart';
+import '../../systems/audio_manager.dart';
 import '../enemy.dart';
 import '../player.dart';
 
@@ -80,6 +81,7 @@ abstract class MeleeEnemy extends BaseEnemy {
     if (_damageDelayTimer > 0) {
       _damageDelayTimer -= dt;
       if (_damageDelayTimer <= 0) {
+        onMeleeStrike();
         _applyDelayedDamage();
       }
     }
@@ -208,7 +210,12 @@ abstract class MeleeEnemy extends BaseEnemy {
 
   /// Override to customise attack animation tells.
   /// The actual damage impact is resolved dynamically with a delay.
-  void onMeleeSwing(Player player) {}
+  void onMeleeSwing(Player player) {
+    AudioManager.playEnemyMeleeAttack();
+  }
+
+  /// Override to customise the attack sound when the weapon actually strikes (at the end of the damage delay).
+  void onMeleeStrike() {}
 
   void _applyDelayedDamage() {
     final player = _swingTarget;
@@ -238,6 +245,7 @@ abstract class MeleeEnemy extends BaseEnemy {
       if (game.hasLineOfSight(myCenter, playerCenterPos)) {
         if (!player.isInvincible) {
           player.receiveDamage(contactDamage);
+          AudioManager.playEnemyMeleeHit();
         } else {
           // Reward perfect dodge if invincible during the actual hit frame!
           game.playerState.perfectDodges++;

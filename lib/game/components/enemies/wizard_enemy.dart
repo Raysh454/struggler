@@ -3,6 +3,7 @@ import 'package:flame/components.dart';
 
 import '../../asset_registry.dart';
 import '../../config.dart';
+import '../../systems/audio_manager.dart';
 import '../player.dart';
 import '../projectile.dart';
 import 'arcane_archer_enemy.dart'; // reuse RangedEnemy base
@@ -132,6 +133,7 @@ class WizardEnemy extends RangedEnemy {
       direction: facingDirection,
       targetVector: targetVector,
     ));
+    AudioManager.playSfx(AudioManager.sfxFireball);
   }
 
   @override
