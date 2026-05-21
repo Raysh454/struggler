@@ -29,19 +29,18 @@ The centerpiece of STRUGGLER is **The Architect**, a Google Antigravity-powered 
 ## Integrations Implemented & APIs Used
 
 ### Agentic Execution APIs
-- **Google Antigravity / Generative AI (Gemini 2.5 Flash)**: The core reasoning intelligence powering The Architect agent workflow. 
-- **Google Cloud Platform (Vertex AI)**: Integrated via `googleapis_auth` using Application Default Credentials (ADC). This allows seamless cloud deployment with Vertex AI REST endpoints.
-- **Fallback Mechanism**: If ADC is unavailable, the system intelligently falls back to the standard `google_generative_ai` REST client, ensuring the agentic orchestrator is always active.
+- **Google Antigravity / Generative AI (Gemini 2.5 Flash)**: The core reasoning intelligence powering The Architect agent workflow.
+- **Cloud Functions Relay Gateway**: Integrated via an asynchronous HTTP relay gateway (`https://us-central1-struggler-496812.cloudfunctions.net/architect-relay`). This serves as a secure proxy to forward structured telemetry payloads to Gemini/Vertex AI, eliminating the need to compile local API keys or store Application Default Credentials (ADC) on client/mobile devices.
 
 ### Integration Flow
 1. **State Serialization**: The `PlayerState` and `GameState` serialize complex gameplay metrics into precise JSON structures.
 2. **Prompt Engineering**: Highly specialized system prompts define the persona, strict JSON compliance rules, and the mechanics/boundaries of the game world.
-3. **Asynchronous Generation**: The `ArchitectAgent` handles HTTP POST requests asynchronously. Responses are deserialized, parsed into internal `LevelData` objects, validated, and cached for the Flame engine to render upon portal transition.
+3. **Asynchronous Generation**: The `ArchitectAgent` handles HTTP POST requests asynchronously to the Cloud Functions relay gateway. Responses are deserialized, parsed into internal `LevelData` objects, validated, and cached for the Flame engine to render upon portal transition.
 
 ## Technologies Used
 - **Dart & Flutter**: Application framework.
 - **Flame (`flame`)**: High-performance 2D game engine for Flutter.
-- **Google Generative AI SDK**: For LLM interactions.
+- **HTTP client**: For secure, lightweight REST communications with the Cloud Functions relay gateway.
 - **Audioplayers / Flame Audio**: For dynamic BGM and sound effects.
 
 ## How to Play
