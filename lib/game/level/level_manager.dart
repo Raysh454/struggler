@@ -119,6 +119,7 @@ class LevelManager {
     }
 
     // --- Enemies ---
+    int actualEnemyCount = 0;
     for (final enemy in validatedData.enemies) {
       final key = '${validatedData.levelId}_enemy_${enemy.x}_${enemy.y}';
       if (game.removedEntitiesKeys.contains(key)) {
@@ -127,7 +128,11 @@ class LevelManager {
       final enemyComp = _buildEnemy(enemy);
       enemyComp.spawnData = enemy;
       components.add(enemyComp);
+      actualEnemyCount++;
     }
+    // Sync the cached count with the ACTUAL number of enemies spawned
+    // (post-validation, post-removedEntitiesKeys filtering)
+    game.cachedAliveEnemiesCount = actualEnemyCount;
 
     // --- Pickups ---
     for (final pickup in validatedData.pickups) {

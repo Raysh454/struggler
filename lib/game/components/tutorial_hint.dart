@@ -21,26 +21,57 @@ class TutorialHint extends PositionComponent
          anchor: Anchor.topCenter,
        );
 
+  final List<TextPainter> _textPainters = [];
+  double _maxLineWidth = 0;
+  double _totalTextHeight = 0;
+  double _lineHeight = 0;
+  bool _isFullyLoaded = false;
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    _lineHeight = fontSize + 3;
+    final lines = text.split('\n');
+    _totalTextHeight = lines.length * _lineHeight;
+
+    for (final line in lines) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: line,
+          style: TextStyle(
+            color: textColor,
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      _textPainters.add(tp);
+      if (tp.width > _maxLineWidth) {
+        _maxLineWidth = tp.width;
+      }
+    }
+    _isFullyLoaded = true;
+  }
+
   double _bobTimer = 0;
 
   @override
   void update(double dt) {
+    if (!_isFullyLoaded) return;
     super.update(dt);
     _bobTimer += dt;
   }
 
   @override
   void render(Canvas canvas) {
+    if (!_isFullyLoaded) return;
     super.render(canvas);
     final bob = _sinBob(_bobTimer, 2.0, 1.5);
 
-    final lines = text.split('\n');
-    final lineHeight = fontSize + 3;
-    final totalTextHeight = lines.length * lineHeight;
-    final maxLineWidth = _measureMaxLineWidth(lines, fontSize);
-
-    final panelW = maxLineWidth + 16;
-    final panelH = totalTextHeight + 10;
+    final panelW = _maxLineWidth + 16;
+    final panelH = _totalTextHeight + 10;
     final panelX = (size.x - panelW) / 2;
     final panelY = bob + (size.y - panelH) / 2;
 
@@ -60,24 +91,13 @@ class TutorialHint extends PositionComponent
     );
 
     // Render text lines
-    for (int i = 0; i < lines.length; i++) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: lines[i],
-          style: TextStyle(
-            color: textColor,
-            fontSize: fontSize,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
+    for (int i = 0; i < _textPainters.length; i++) {
+      final tp = _textPainters[i];
       tp.paint(
         canvas,
         Offset(
           panelX + (panelW - tp.width) / 2,
-          panelY + 5 + i * lineHeight + bob * 0.1,
+          panelY + 5 + i * _lineHeight + bob * 0.1,
         ),
       );
     }
@@ -93,24 +113,5 @@ class TutorialHint extends PositionComponent
     if (x > 3.14159) x -= 6.28318;
     final x2 = x * x;
     return x * (1 - x2 / 6 * (1 - x2 / 20 * (1 - x2 / 42)));
-  }
-
-  double _measureMaxLineWidth(List<String> lines, double fs) {
-    double maxW = 0;
-    for (final line in lines) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: line,
-          style: TextStyle(
-            fontSize: fs,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      if (tp.width > maxW) maxW = tp.width;
-    }
-    return maxW;
   }
 }

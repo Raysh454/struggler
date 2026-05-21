@@ -192,13 +192,24 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Center(
-        child: ClipRRect(
+      body: Stack(
+        children: [
+          // Background tap to close
+          GestureDetector(
+            onTap: () => widget.game.closeGuardianUpgrades(),
+            behavior: HitTestBehavior.opaque,
+            child: Container(color: Colors.transparent),
+          ),
+          // Menu Content
+          Center(
+            child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              width: 420,
+            child: GestureDetector(
+              onTap: () {}, // Prevent taps from bubbling up to the background closer
+              child: Container(
+                width: 420,
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.9,
               ),
@@ -346,12 +357,15 @@ class _GuardianUpgradesOverlayState extends State<GuardianUpgradesOverlay> {
                   ),
                 ],
               ),
-              ),
             ),
           ),
         ),
       ),
-    );
+    ),
+  ),
+  ],
+),
+);
   }
 }
 

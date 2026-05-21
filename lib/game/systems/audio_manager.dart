@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flame_audio/flame_audio.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 /// Centralized audio manager for all SFX and BGM in the game.
 ///
@@ -21,6 +22,22 @@ class AudioManager {
   static const int _poolSize = 8;
   static final List<AudioPlayer> _sfxPlayers = [];
   static int _sfxIndex = 0;
+
+  static AudioPlayer _createSfxPlayer() {
+    final player = AudioPlayer();
+    player.setAudioContext(AudioContext(
+      android: const AudioContextAndroid(
+        stayAwake: false,
+        contentType: AndroidContentType.sonification,
+        usageType: AndroidUsageType.game,
+        audioFocus: AndroidAudioFocus.none,
+      ),
+      iOS: AudioContextIOS(
+        category: AVAudioSessionCategory.ambient,
+      ),
+    ));
+    return player;
+  }
 
   // Footstep throttle
   static double _footstepTimer = 0;
@@ -104,7 +121,7 @@ class AudioManager {
       // Initialize SFX Player Pool
       _sfxPlayers.clear();
       for (int i = 0; i < _poolSize; i++) {
-        _sfxPlayers.add(AudioPlayer());
+        _sfxPlayers.add(_createSfxPlayer());
       }
 
       _initialized = true;
@@ -122,7 +139,7 @@ class AudioManager {
       if (_sfxPlayers.isEmpty) {
         // Fallback initialization if preloadAll wasn't called/finished yet
         for (int i = 0; i < _poolSize; i++) {
-          _sfxPlayers.add(AudioPlayer());
+          _sfxPlayers.add(_createSfxPlayer());
         }
       }
       final player = _sfxPlayers[_sfxIndex];

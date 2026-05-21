@@ -325,11 +325,18 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     }
 
     if (isOnGround && !_isDead) {
-      final isOverlappingHazard = game.world.children.any((c) => 
-        (c is Lava || c is Spike) && toRect().overlaps((c as PositionComponent).toRect())
-      );
-      if (!isOverlappingHazard) {
-        lastSafePosition = position.clone();
+      final grid = game.activeGrid;
+      if (grid != null) {
+        final leftFootX = (position.x / GameConfig.tileSize).floor();
+        final rightFootX = ((position.x + size.x) / GameConfig.tileSize).floor();
+        final footY = ((position.y + size.y) / GameConfig.tileSize).floor();
+        final isSafe = !grid.isLava(leftFootX, footY) &&
+                       !grid.isLava(rightFootX, footY) &&
+                       !grid.isSpike(leftFootX, footY) &&
+                       !grid.isSpike(rightFootX, footY);
+        if (isSafe) {
+          lastSafePosition = position.clone();
+        }
       }
     }
   }
@@ -651,7 +658,36 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   }
 
   void _applyVelocity(double dt) {
-    position += velocity * dt;
+    var delta = velocity * dt;
+
+    // Continuous Collision Detection (CCD) for falling to prevent tunneling on high dt
+    if (velocity.y > 0) {
+      final grid = game.activeGrid;
+      if (grid != null) {
+        final currentBottomY = position.y + size.y;
+        final nextBottomY = currentBottomY + delta.y;
+        final currentTileY = (currentBottomY / GameConfig.tileSize).floor();
+        final nextTileY = (nextBottomY / GameConfig.tileSize).floor();
+
+        if (nextTileY > currentTileY) {
+          final leftFootX = (position.x / GameConfig.tileSize).floor();
+          final rightFootX = ((position.x + size.x) / GameConfig.tileSize).floor();
+
+          for (int ty = currentTileY + 1; ty <= nextTileY; ty++) {
+            if (grid.isSolid(leftFootX, ty) || grid.isSolid(rightFootX, ty)) {
+              // Clamp delta.y so we land exactly on top of the solid tile
+              delta.y = (ty * GameConfig.tileSize) - currentBottomY;
+              velocity.y = 0;
+              isOnGround = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    position += delta;
+
     // Fall into void = death
     final mapBottom = (game.activeGrid?.height ?? 25) * GameConfig.tileSize;
     if (position.y > mapBottom + GameConfig.playerVoidDeathBuffer) {

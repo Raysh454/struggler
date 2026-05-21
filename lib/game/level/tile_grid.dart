@@ -50,7 +50,7 @@ class TileGrid {
     final List<List<String?>> grid = List.generate(h, (_) => List<String?>.filled(w, null));
 
     for (final tile in tiles) {
-      if (tile.type != 'block' && tile.type != 'lava' && tile.type != 'platform') continue;
+      if (tile.type != 'block' && tile.type != 'lava' && tile.type != 'platform' && tile.type != 'spike') continue;
 
       final startX = tile.x.round();
       final startY = tile.y.round();
@@ -79,6 +79,12 @@ class TileGrid {
   bool isLava(int x, int y) {
     if (x < 0 || y < 0 || x >= width || y >= height) return false;
     return _grid[y][x] == 'lava';
+  }
+
+  /// Check if a cell contains a spike.
+  bool isSpike(int x, int y) {
+    if (x < 0 || y < 0 || x >= width || y >= height) return false;
+    return _grid[y][x] == 'spike';
   }
 
   /// Check if a pillar exists at this cell.

@@ -155,6 +155,14 @@ class _TouchControls extends StatelessWidget {
                           game.transitionThroughPortal(
                             isReturn: game.player.currentPortal!.isReturn,
                           );
+                        } else if (game.player.currentExitPortal != null) {
+                          final enemiesRemaining = game.cachedAliveEnemiesCount;
+                          if (enemiesRemaining <= 0) {
+                            game.onLevelComplete();
+                          } else {
+                            game.onScreenShake(2.0);
+                            print('[StruggleGame] Cannot exit level: $enemiesRemaining enemies still alive!');
+                          }
                         } else if (game.player.currentGuardian != null) {
                           game.openGuardianUpgrades();
                         }

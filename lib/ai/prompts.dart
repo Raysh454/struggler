@@ -179,7 +179,7 @@ Any double quotes inside string fields MUST be properly escaped with a backslash
   "difficulty": "EASY" | "NORMAL" | "HARD" | "EXTREME" | "BOSS",
   "enemyDamageMultiplier": 1.0,
   "enemyHealthMultiplier": 1.0,
-  "architectDialogue": "string" | null,
+  "architectDialogue": "string" | null, // DO NOT REPEAT THE SAME DIALOUGE AND DO NOT MAKE IT LONGER THAN A 1 LINE SENTENCE AS WELL AS DONT SAY SOMETHING LIKE "THIS IS YOUR FIRST AND LAST LESSON"
   "narrativeEvents": [
     {
       "type": "ARCHITECT_TAUNT", // DO NOT REPEAT THE SAME DIALOGUE AND SHOULD NOT BE LONGER THAN A 1 LINE SENTENCE

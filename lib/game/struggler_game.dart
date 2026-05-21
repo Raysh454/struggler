@@ -44,6 +44,7 @@ class StruggleGame extends FlameGame
   // Portal transition variables
   int? _previousLevelId;
   Vector2? _previousPlayerPosition;
+  int? _previousAliveEnemiesCount;
 
   // Controls visibility notifier
   final ValueNotifier<bool> showControlsNotifier = ValueNotifier(false);
@@ -85,6 +86,7 @@ class StruggleGame extends FlameGame
   bool isCutscenePlaying = false;
   bool lowHealthTauntTriggered = false;
   LevelTheme? currentTheme;
+  int cachedAliveEnemiesCount = 0;
 
   /// Tracks the last hardcoded fallback level ID used (1-9), for incremental cycling.
   int _lastFallbackLevelId = 0;
@@ -197,6 +199,8 @@ class StruggleGame extends FlameGame
 
       // Track total enemies in level for live telemetry
       playerState.totalEnemiesInLevel = levelData.enemies.length;
+      // NOTE: cachedAliveEnemiesCount is set inside LevelManager.buildLevel()
+      // after validation and removedEntitiesKeys filtering, ensuring accuracy.
     }
 
     // Pick a random theme for the level
@@ -716,11 +720,6 @@ class StruggleGame extends FlameGame
     }
   }
 
-  @override
-  void onTapDown(TapDownEvent event) {
-    super.onTapDown(event);
-    player.attackPressed = true;
-  }
 
   void onLevelComplete() async {
     // Guard against multiple calls (e.g. if player triggers exit portal twice)
@@ -899,11 +898,16 @@ class StruggleGame extends FlameGame
       final targetPos = _previousPlayerPosition;
 
       gameState.currentLevel = targetLevel;
+      final savedEnemyCount = _previousAliveEnemiesCount;
       loadLevel(
         targetLevel,
         preFetchedLevel: cachedActiveLevel,
         isReturnFromPortal: true,
       ).then((_) {
+        // Restore the exact enemy count from before entering the portal
+        if (savedEnemyCount != null) {
+          cachedAliveEnemiesCount = savedEnemyCount;
+        }
         if (targetPos != null) {
           player.position.setFrom(targetPos);
           // Let the cat snap behind the player instantly
@@ -921,9 +925,10 @@ class StruggleGame extends FlameGame
         }
       });
     } else {
-      // Entering Guardian Realm: save main level ID and player entry coordinates
+      // Entering Guardian Realm: save main level ID, player entry coordinates, and enemy count
       _previousLevelId = gameState.currentLevel;
       _previousPlayerPosition = player.position.clone();
+      _previousAliveEnemiesCount = cachedAliveEnemiesCount;
 
       gameState.currentLevel = -1;
       loadLevel(-1);

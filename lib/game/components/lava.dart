@@ -36,6 +36,15 @@ class Lava extends PositionComponent with CollisionCallbacks, HasGameReference<S
     ));
   }
 
+  final Paint _darkenPaint = Paint()
+    ..colorFilter = const ColorFilter.mode(
+      Color(0x50000000), // 40% shadow like block pillars
+      BlendMode.srcATop,
+    );
+  final Paint _glowPaint = Paint()..blendMode = BlendMode.screen;
+  final Vector2 _renderPos = Vector2.zero();
+  final Vector2 _renderSize = Vector2.zero();
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -82,12 +91,6 @@ class Lava extends PositionComponent with CollisionCallbacks, HasGameReference<S
     final random = Random(startGx ^ bottomGy);
     final int targetPillarDepth = random.nextInt(3) + 4; // 4 to 6 tiles
 
-    final darkenPaint = Paint()
-      ..colorFilter = const ColorFilter.mode(
-        Color(0x50000000), // 40% shadow like block pillars
-        BlendMode.srcATop,
-      );
-
     // Viewport-culling max depth for columns with void underneath
     double maxLavaDepth = size.y;
     final double cameraY = game.camera.viewfinder.position.y;
@@ -126,11 +129,13 @@ class Lava extends PositionComponent with CollisionCallbacks, HasGameReference<S
           final isLastRow = (y + destTileSize >= colLimitY);
           final sprite = _pickPillarSprite(gx, currentGy, isLastRow, random);
           
+          _renderPos.setValues(x, y);
+          _renderSize.setValues(destTileSize + 1.0, destTileSize + 1.0);
           sprite.render(
             canvas,
-            position: Vector2(x, y),
-            size: Vector2(destTileSize + 1.0, destTileSize + 1.0),
-            overridePaint: darkenPaint,
+            position: _renderPos,
+            size: _renderSize,
+            overridePaint: _darkenPaint,
           );
         }
       } else {
@@ -145,11 +150,13 @@ class Lava extends PositionComponent with CollisionCallbacks, HasGameReference<S
             final isLastRow = (y + destTileSize >= colLimitY);
             final sprite = _pickPillarSprite(gx, currentGy, isLastRow, random);
             
+            _renderPos.setValues(x, y);
+            _renderSize.setValues(destTileSize + 1.0, destTileSize + 1.0);
             sprite.render(
               canvas,
-              position: Vector2(x, y),
-              size: Vector2(destTileSize + 1.0, destTileSize + 1.0),
-              overridePaint: darkenPaint,
+              position: _renderPos,
+              size: _renderSize,
+              overridePaint: _darkenPaint,
             );
           }
         }
@@ -188,21 +195,22 @@ class Lava extends PositionComponent with CollisionCallbacks, HasGameReference<S
         }
 
         final double drawHeight = min(destTileSize, colLavaDepth - y);
-        final renderSize = Vector2(drawWidth + 1.0, drawHeight + 1.0);
+        _renderSize.setValues(drawWidth + 1.0, drawHeight + 1.0);
+        _renderPos.setValues(drawX, y);
 
         if (drawWidth == destTileSize && drawHeight == destTileSize) {
           sprite.render(
             canvas,
-            position: Vector2(drawX, y),
-            size: renderSize,
+            position: _renderPos,
+            size: _renderSize,
           );
         } else {
           canvas.save();
           canvas.clipRect(Rect.fromLTWH(drawX, y, drawWidth, drawHeight));
           sprite.render(
             canvas,
-            position: Vector2(drawX, y),
-            size: renderSize,
+            position: _renderPos,
+            size: _renderSize,
           );
           canvas.restore();
         }
@@ -212,11 +220,10 @@ class Lava extends PositionComponent with CollisionCallbacks, HasGameReference<S
     // Overlay pulsing glow (constrained to actual size plus bleed)
     final pulse = (sin(_glowTimer) * 0.3 + 0.7);
     final r = (100 * pulse).round().clamp(0, 255);
+    _glowPaint.color = Color.fromARGB((50 * pulse).round(), r, 30, 0);
     canvas.drawRect(
       Rect.fromLTWH(-bleed, 0, size.x + bleed * 2, size.y),
-      Paint()
-        ..color = Color.fromARGB((50 * pulse).round(), r, 30, 0)
-        ..blendMode = BlendMode.screen,
+      _glowPaint,
     );
   }
 }

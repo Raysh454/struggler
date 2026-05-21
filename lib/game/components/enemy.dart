@@ -404,6 +404,7 @@ abstract class BaseEnemy extends PositionComponent
             '${game.gameState.currentLevel}_enemy_${spawnData.x}_${spawnData.y}';
         game.removedEntitiesKeys.add(key);
       }
+      game.cachedAliveEnemiesCount--;
       onDeath();
       return true;
     }

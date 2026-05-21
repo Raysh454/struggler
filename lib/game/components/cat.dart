@@ -144,6 +144,9 @@ class CompanionCat extends PositionComponent
     }
   }
 
+  double _enemyScanTimer = 0.0;
+  BaseEnemy? _cachedClosestEnemy;
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -168,8 +171,7 @@ class CompanionCat extends PositionComponent
     _scratchSlashes.removeWhere((s) => s.lifeTime <= 0);
 
     // Locate player to coordinate behavior
-    final player = game.world.children.whereType<Player>().firstOrNull;
-    if (player == null) return;
+    final player = game.player;
 
     final playerCenter = player.position + player.size / 2;
     final myCenter = position + size / 2;
@@ -178,23 +180,28 @@ class CompanionCat extends PositionComponent
       case CatBehaviorMode.following:
         // 1. Check for Proximity Combat Attacks (if attack cooldown ready)
         if (_attackCooldownTimer <= 0) {
-          final enemies = game.world.children.whereType<BaseEnemy>().where(
-            (e) => !e.isDead,
-          );
-          BaseEnemy? closestEnemy;
-          double closestDist = GameConfig.catAttackRange;
+          _enemyScanTimer -= dt;
+          if (_enemyScanTimer <= 0) {
+            _enemyScanTimer = 0.2; // Scan every 200ms
+            final enemies = game.world.children.whereType<BaseEnemy>().where(
+              (e) => !e.isDead,
+            );
+            BaseEnemy? closestEnemy;
+            double closestDist = GameConfig.catAttackRange;
 
-          for (final enemy in enemies) {
-            final enemyCenter = enemy.position + enemy.size / 2;
-            final dist = playerCenter.distanceTo(enemyCenter);
-            if (dist < closestDist) {
-              closestDist = dist;
-              closestEnemy = enemy;
+            for (final enemy in enemies) {
+              final enemyCenter = enemy.position + enemy.size / 2;
+              final dist = playerCenter.distanceTo(enemyCenter);
+              if (dist < closestDist) {
+                closestDist = dist;
+                closestEnemy = enemy;
+              }
             }
+            _cachedClosestEnemy = closestEnemy;
           }
 
-          if (closestEnemy != null) {
-            _attackTarget = closestEnemy;
+          if (_cachedClosestEnemy != null && !_cachedClosestEnemy!.isDead) {
+            _attackTarget = _cachedClosestEnemy;
             _behaviorMode = CatBehaviorMode.attacking;
             _attackDurationTimer =
                 0.96; // 8 frames * 0.12 stepTime = 0.96 seconds
@@ -207,6 +214,7 @@ class CompanionCat extends PositionComponent
 
             // Sync damage delay timer with peak frame index 5 (5 * 0.12s = 0.60s)
             _damageDelayTimer = 0.60;
+            _cachedClosestEnemy = null;
             break;
           }
         }
