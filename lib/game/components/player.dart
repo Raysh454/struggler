@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart' hide Block;
 import 'package:flutter/services.dart';
@@ -114,7 +115,10 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   // --- Resolve visual ---
   bool get isIndomitable => game.playerState.isIndomitable;
 
-  Player({required Vector2 position})
+  // joystick
+  final JoystickComponent joystick;
+
+  Player({required Vector2 position, required this.joystick})
       : super(
           position: position,
           size: GameConfig.playerSize,
@@ -428,10 +432,10 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     if (_attackFreezeTimer > 0 || _isAirAttacking) {
       velocity.x = 0;
     } else {
-      if (moveLeft) {
+      if (moveLeft || joystick.relativeDelta.x < -0.3) {
         velocity.x = -moveSpeed;
         _facingDirection = -1;
-      } else if (moveRight) {
+      } else if (moveRight || joystick.relativeDelta.x > 0.3) {
         velocity.x = moveSpeed;
         _facingDirection = 1;
       } else {
@@ -440,7 +444,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     }
 
     // Drop-down logic
-    if (downPressed && isOnGround && _ignorePlatformsTimer <= 0) {
+
+    final joystickDown = (joystick.relativeDelta.y > 0.90);
+    if ((downPressed || joystickDown) && isOnGround && _ignorePlatformsTimer <= 0) {
       _ignorePlatformsTimer = GameConfig.playerDropThroughDuration;
       isOnGround = false;
       velocity.y = GameConfig.playerDropThroughVelocity;

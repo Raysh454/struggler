@@ -312,8 +312,9 @@ class LevelValidator {
             final sx = tile.x.round() + dx;
             final sy = tile.y.round() + dy;
 
-            if (sx < 0 || sx >= mapWidth + 10 || sy < 0 || sy >= mapHeight + 10)
+            if (sx < 0 || sx >= mapWidth + 10 || sy < 0 || sy >= mapHeight + 10) {
               continue;
+            }
 
             // Check direct overlap with solid block/platform
             if (grid[sy][sx] == 'block' || grid[sy][sx] == 'platform') {
@@ -588,20 +589,24 @@ class LevelValidator {
 
       // Check below
       if (y + 1 < h &&
-          (grid[y + 1][x] == 'block' || grid[y + 1][x] == 'platform'))
+          (grid[y + 1][x] == 'block' || grid[y + 1][x] == 'platform')) {
         return true;
+      }
       // Check above
       if (y - 1 >= 0 &&
-          (grid[y - 1][x] == 'block' || grid[y - 1][x] == 'platform'))
+          (grid[y - 1][x] == 'block' || grid[y - 1][x] == 'platform')) {
         return true;
+      }
       // Check left
       if (x - 1 >= 0 &&
-          (grid[y][x - 1] == 'block' || grid[y][x - 1] == 'platform'))
+          (grid[y][x - 1] == 'block' || grid[y][x - 1] == 'platform')) {
         return true;
+      }
       // Check right
       if (x + 1 < w &&
-          (grid[y][x + 1] == 'block' || grid[y][x + 1] == 'platform'))
+          (grid[y][x + 1] == 'block' || grid[y][x + 1] == 'platform')) {
         return true;
+      }
     }
 
     return false;

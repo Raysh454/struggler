@@ -24,7 +24,11 @@ class ArchitectAgent {
   Future<Map<String, dynamic>?> generateDifficulty(
     Map<String, dynamic> telemetry,
   ) async {
-    return _generateViaRelay(telemetry, architectDifficultyPrompt, 'Difficulty');
+    return _generateViaRelay(
+      telemetry,
+      architectDifficultyPrompt,
+      'Difficulty',
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -45,18 +49,16 @@ class ArchitectAgent {
           {
             'role': 'user',
             'parts': [
-              {'text': jsonEncode(telemetry)}
-            ]
-          }
+              {'text': jsonEncode(telemetry)},
+            ],
+          },
         ],
         'systemInstruction': {
           'parts': [
-            {'text': systemPrompt}
-          ]
+            {'text': systemPrompt},
+          ],
         },
-        'generationConfig': {
-          'responseMimeType': 'application/json'
-        }
+        'generationConfig': {'responseMimeType': 'application/json'},
       };
 
       final response = await http.post(
@@ -66,8 +68,11 @@ class ArchitectAgent {
       );
 
       if (response.statusCode != 200) {
-        _logError(phase, targetLevel,
-            'HTTP ${response.statusCode}: ${response.body.length > 200 ? response.body.substring(0, 200) : response.body}');
+        _logError(
+          phase,
+          targetLevel,
+          'HTTP ${response.statusCode}: ${response.body.length > 200 ? response.body.substring(0, 200) : response.body}',
+        );
         return null;
       }
 
@@ -77,8 +82,9 @@ class ArchitectAgent {
       String? text;
       if (responseBody is Map) {
         if (responseBody.containsKey('candidates')) {
-          text = responseBody['candidates']?[0]?['content']?['parts']?[0]
-              ?['text'] as String?;
+          text =
+              responseBody['candidates']?[0]?['content']?['parts']?[0]?['text']
+                  as String?;
         } else if (responseBody.containsKey('text')) {
           text = responseBody['text'] as String?;
         }
@@ -107,10 +113,16 @@ class ArchitectAgent {
       Map<String, dynamic> jsonResponse;
       if (decoded is Map<String, dynamic>) {
         jsonResponse = decoded;
-      } else if (decoded is List && decoded.isNotEmpty && decoded.first is Map) {
+      } else if (decoded is List &&
+          decoded.isNotEmpty &&
+          decoded.first is Map) {
         jsonResponse = Map<String, dynamic>.from(decoded.first as Map);
       } else {
-        _logError(phase, targetLevel, 'Unexpected response type: ${decoded.runtimeType}');
+        _logError(
+          phase,
+          targetLevel,
+          'Unexpected response type: ${decoded.runtimeType}',
+        );
         return null;
       }
       // Debug: show what keys the AI actually returned
@@ -133,7 +145,10 @@ class ArchitectAgent {
   // ═══════════════════════════════════════════════════════════════
 
   void _logRequest(
-      String phase, dynamic targetLevel, Map<String, dynamic> telemetry) {
+    String phase,
+    dynamic targetLevel,
+    Map<String, dynamic> telemetry,
+  ) {
     final emoji = phase == 'MapLayout' ? '🗺️' : '⚡';
     final gameProgress = telemetry['gameProgress'] as Map<String, dynamic>?;
     final deaths = gameProgress?['totalDeaths'] ?? '?';
@@ -141,12 +156,9 @@ class ArchitectAgent {
     final diamonds = gameProgress?['diamondsCollected'] ?? '?';
 
     print('');
-    print(
-        '┌───────────────────────────────────────────────────────────');
-    print(
-        '│  $emoji  ANTIGRAVITY AGENT ─ $phase Request (Level $targetLevel)');
-    print(
-        '├───────────────────────────────────────────────────────────');
+    print('┌───────────────────────────────────────────────────────────');
+    print('│  $emoji  ANTIGRAVITY AGENT ─ $phase Request (Level $targetLevel)');
+    print('├───────────────────────────────────────────────────────────');
     print('│  🎯 Target Level: $targetLevel');
     print('│  💀 Total Deaths: $deaths  │  💎 Diamonds: $diamonds');
     print('│  📖 Narrative Phase: $gamePhase');
@@ -162,39 +174,36 @@ class ArchitectAgent {
         final total = perf['totalEnemiesInLevel'] ?? '?';
         final levelDeaths = perf['deathsThisLevel'] ?? '?';
         print(
-            '│  ❤️  Health: $hp%  │  🛡️ Dodges: $dodges  │  ☠️ Deaths This Level: $levelDeaths');
+          '│  ❤️  Health: $hp%  │  🛡️ Dodges: $dodges  │  ☠️ Deaths This Level: $levelDeaths',
+        );
         print('│  ⚔️  Enemies Defeated: $defeated / $total');
       }
     }
 
-    print(
-        '│  🔗 Endpoint: Cloud Functions Relay Gateway');
-    print(
-        '└───────────────────────────────────────────────────────────');
+    print('│  🔗 Endpoint: Cloud Functions Relay Gateway');
+    print('└───────────────────────────────────────────────────────────');
     print('');
   }
 
   void _logResponse(
-      String phase, dynamic targetLevel, Map<String, dynamic> json) {
+    String phase,
+    dynamic targetLevel,
+    Map<String, dynamic> json,
+  ) {
     print('');
-    print(
-        '┌───────────────────────────────────────────────────────────');
-    print(
-        '│  ✅  ANTIGRAVITY AGENT ─ $phase Response (Level $targetLevel)');
-    print(
-        '├───────────────────────────────────────────────────────────');
+    print('┌───────────────────────────────────────────────────────────');
+    print('│  ✅  ANTIGRAVITY AGENT ─ $phase Response (Level $targetLevel)');
+    print('├───────────────────────────────────────────────────────────');
 
     if (phase == 'MapLayout') {
       final bp = json['levelBlueprint'] as Map<String, dynamic>?;
       final w = bp?['width'] ?? '?';
       final h = bp?['height'] ?? '?';
       final objects = bp?['objects'] as List<dynamic>? ?? [];
-      final enemies =
-          objects.where((o) => o['type'] == 'ENEMY').length;
-      final pickups =
-          objects.where((o) => o['type'] == 'PICKUP').length;
+      final enemies = objects.where((o) => o['type'] == 'ENEMY').length;
+      final pickups = objects.where((o) => o['type'] == 'PICKUP').length;
       final tiles = bp?['tiles'] as List<dynamic>? ?? [];
-      print('│  📐 Blueprint: ${w}×${h} tiles (${tiles.length} tile regions)');
+      print('│  📐 Blueprint: $w×$h tiles (${tiles.length} tile regions)');
       print('│  👾 Enemies Placed: $enemies  │  💊 Pickups: $pickups');
     } else {
       final diff = json['difficulty'] ?? '?';
@@ -215,32 +224,26 @@ class ArchitectAgent {
     // Reasoning block
     final reasoning = json['reasoning'] as String?;
     if (reasoning != null && reasoning.isNotEmpty) {
-      print(
-          '├───────────────────────────────────────────────────────────');
+      print('├───────────────────────────────────────────────────────────');
       print('│  🧠 Architect Reasoning:');
       for (final line in _wordWrap(reasoning, 55)) {
         print('│     $line');
       }
     }
 
-    print(
-        '└───────────────────────────────────────────────────────────');
+    print('└───────────────────────────────────────────────────────────');
     print('');
   }
 
   void _logError(String phase, dynamic targetLevel, String message) {
     print('');
-    print(
-        '┌───────────────────────────────────────────────────────────');
-    print(
-        '│  ❌  ANTIGRAVITY AGENT ─ $phase Error (Level $targetLevel)');
-    print(
-        '├───────────────────────────────────────────────────────────');
+    print('┌───────────────────────────────────────────────────────────');
+    print('│  ❌  ANTIGRAVITY AGENT ─ $phase Error (Level $targetLevel)');
+    print('├───────────────────────────────────────────────────────────');
     for (final line in _wordWrap(message, 55)) {
       print('│  $line');
     }
-    print(
-        '└───────────────────────────────────────────────────────────');
+    print('└───────────────────────────────────────────────────────────');
     print('');
   }
 
@@ -249,8 +252,7 @@ class ArchitectAgent {
     final lines = <String>[];
     var current = StringBuffer();
     for (final word in words) {
-      if (current.length + word.length + 1 > maxWidth &&
-          current.isNotEmpty) {
+      if (current.length + word.length + 1 > maxWidth && current.isNotEmpty) {
         lines.add(current.toString());
         current = StringBuffer();
       }
@@ -276,9 +278,18 @@ class ArchitectAgent {
       bool inString = false;
       bool escaped = false;
       for (int i = 0; i < line.length - 1; i++) {
-        if (escaped) { escaped = false; continue; }
-        if (line[i] == '\\') { escaped = true; continue; }
-        if (line[i] == '"') { inString = !inString; continue; }
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+        if (line[i] == '\\') {
+          escaped = true;
+          continue;
+        }
+        if (line[i] == '"') {
+          inString = !inString;
+          continue;
+        }
         if (!inString && line[i] == '/' && line[i + 1] == '/') {
           commentStart = i;
           break;
@@ -299,8 +310,35 @@ class ArchitectAgent {
     Map<String, dynamic> output,
     String phase,
   ) {
-    // Disabled on mobile to prevent lag and FileSystemExceptions.
-    return;
+    try {
+      final logDir = Directory('logs');
+      if (!logDir.existsSync()) {
+        logDir.createSync(recursive: true);
+      }
+      final logFile = File('logs/logs.json');
+      List<dynamic> logsList = [];
+      if (logFile.existsSync()) {
+        final contents = logFile.readAsStringSync();
+        if (contents.isNotEmpty) {
+          try {
+            logsList = jsonDecode(contents) as List<dynamic>;
+          } catch (e) {
+            print('Error decoding logs/logs.json, starting fresh: $e');
+          }
+        }
+      }
+
+      logsList.add({
+        'timestamp': DateTime.now().toIso8601String(),
+        'phase': phase,
+        'input_telemetry': input,
+        'output_response': output,
+      });
+
+      logFile.writeAsStringSync(jsonEncode(logsList));
+    } catch (logErr) {
+      print('Failed to write to logs/logs.json: $logErr');
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════

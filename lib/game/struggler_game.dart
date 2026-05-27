@@ -5,6 +5,7 @@ import 'systems/audio_manager.dart';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/material.dart';
 
 import '../models/player_state.dart';
 import '../models/game_state.dart';
@@ -239,11 +240,26 @@ class StruggleGame extends FlameGame
     // Store reference to update its parallax offset based on camera position later
     _bgComponent = bgComponent;
 
+
+    // Create joystick component
+    final joystick = JoystickComponent(
+      knob: CircleComponent(
+        radius: 30, 
+        paint: Paint()..color = Colors.white.withOpacity(0.4), // Semi-transparent white knob
+      ),
+      background: CircleComponent(
+        radius: 60, 
+        paint: Paint()..color = Colors.grey.withOpacity(0.1), // Fainter grey background
+      ),
+      position: Vector2(80, size.y - 80),
+      anchor: Anchor.center
+    );
+
     // Spawn player
     final spawnPos = (isReturnFromPortal && _previousPlayerPosition != null)
         ? _previousPlayerPosition!
         : LevelManager.getSpawnPosition(levelData);
-    player = Player(position: spawnPos);
+    player = Player(position: spawnPos, joystick: joystick);
     await world.add(player);
 
     // Spawn companion cat "Hope" right next to player
@@ -263,6 +279,7 @@ class StruggleGame extends FlameGame
     _hud?.removeFromParent();
     _hud = GameHud(playerState: playerState, currentLevel: levelId);
     camera.viewport.add(_hud!);
+    camera.viewport.add(joystick);
 
     // Start level timer
     gameState.startLevel();
