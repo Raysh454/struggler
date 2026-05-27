@@ -33,9 +33,10 @@ enum PlayerAnimationState {
 }
 
 /// The Struggler — the player character.
-class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler, HasGameReference<StruggleGame> {
+class Player extends PositionComponent
+    with CollisionCallbacks, KeyboardHandler, HasGameReference<StruggleGame> {
   SpriteAnimationGroupComponent<PlayerAnimationState>? _animationComponent;
-  
+
   // --- Movement ---
   static const double moveSpeed = GameConfig.playerMoveSpeed;
   static const double jumpForce = GameConfig.playerJumpForce;
@@ -47,7 +48,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   Vector2? lastSafePosition;
   int _facingDirection = 1; // 1 = right, -1 = left
   int get facingDirection => _facingDirection;
-  
+
   // --- Jump State ---
   int _jumpsRemaining = GameConfig.playerMaxJumps;
   static const int _maxJumps = GameConfig.playerMaxJumps;
@@ -66,6 +67,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   set attackPressed(bool val) {
     _attackBufferTimer = val ? GameConfig.playerAttackInputBuffer : 0;
   }
+
   bool dodgePressed = false;
   double _ignorePlatformsTimer = 0.0;
 
@@ -77,14 +79,16 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   double _comboWindowTimer = 0;
   bool _comboQueued = false;
   double _airHangTimer = 0;
-  
+
   // --- Guardian Realm and Portals ---
   GuardianPortal? currentPortal;
   ExitPortal? currentExitPortal;
   Guardian? currentGuardian;
   double _attackTimer = 0;
-  double _attackDamageDelayTimer = 0; // Delay until active swing frame to sync damage
-  double _attackFreezeTimer = 0; // Locks player movement during swing, but allows early exit
+  double _attackDamageDelayTimer =
+      0; // Delay until active swing frame to sync damage
+  double _attackFreezeTimer =
+      0; // Locks player movement during swing, but allows early exit
   static const double attackDuration = GameConfig.playerAttackDuration;
   static const double attackCooldown = GameConfig.playerAttackCooldown;
   static const double comboWindow = GameConfig.playerComboWindow;
@@ -105,7 +109,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
   // --- Hurt flash ---
   double _hurtTimer = 0;
-  
+
   // --- Death state ---
   bool _isDead = false;
   bool get isDead => _isDead;
@@ -119,29 +123,74 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   final JoystickComponent joystick;
 
   Player({required Vector2 position, required this.joystick})
-      : super(
-          position: position,
-          size: GameConfig.playerSize,
-        );
+    : super(position: position, size: GameConfig.playerSize);
 
   @override
   Future<void> onLoad() async {
     super.onLoad();
-    
+
     await add(RectangleHitbox());
     try {
       final idleAnim = await _loadAnimation('Idle.png', 8, 2);
       final runAnim = await _loadAnimation('Run.png', 8, 2);
       final jumpAnim = await _loadAnimation('Jump.png', 8, 2);
-      
+
       final comboStepTime = GameConfig.playerAttackDuration / 4;
-      final attackAnim = await _loadAnimation('Attacks.png', 4, 8, stepTime: comboStepTime, loop: false, startRow: 0, startCol: 0);
-      final attack2Anim = await _loadAnimation('Attacks.png', 4, 8, stepTime: comboStepTime, loop: false, startRow: 0, startCol: 4);
-      final attack3Anim = await _loadAnimation('Attacks.png', 4, 8, stepTime: comboStepTime, loop: false, startRow: 1, startCol: 0);
-      final airAttackAnim = await _loadAnimation('attack_from_air.png', 6, 2, stepTime: 0.05, loop: false);
-      final dodgeAnim = await _loadAnimation('Roll.png', 4, 2, stepTime: 0.05, loop: false);
-      final hurtAnim = await _loadAnimation('Hurt.png', 3, 2, stepTime: 0.1, loop: false);
-      final deathAnim = await _loadAnimation('Death.png', 4, 2, stepTime: 0.1, loop: false);
+      final attackAnim = await _loadAnimation(
+        'Attacks.png',
+        4,
+        8,
+        stepTime: comboStepTime,
+        loop: false,
+        startRow: 0,
+        startCol: 0,
+      );
+      final attack2Anim = await _loadAnimation(
+        'Attacks.png',
+        4,
+        8,
+        stepTime: comboStepTime,
+        loop: false,
+        startRow: 0,
+        startCol: 4,
+      );
+      final attack3Anim = await _loadAnimation(
+        'Attacks.png',
+        4,
+        8,
+        stepTime: comboStepTime,
+        loop: false,
+        startRow: 1,
+        startCol: 0,
+      );
+      final airAttackAnim = await _loadAnimation(
+        'attack_from_air.png',
+        6,
+        2,
+        stepTime: 0.05,
+        loop: false,
+      );
+      final dodgeAnim = await _loadAnimation(
+        'Roll.png',
+        4,
+        2,
+        stepTime: 0.05,
+        loop: false,
+      );
+      final hurtAnim = await _loadAnimation(
+        'Hurt.png',
+        3,
+        2,
+        stepTime: 0.1,
+        loop: false,
+      );
+      final deathAnim = await _loadAnimation(
+        'Death.png',
+        4,
+        2,
+        stepTime: 0.1,
+        loop: false,
+      );
 
       _animationComponent = SpriteAnimationGroupComponent<PlayerAnimationState>(
         animations: {
@@ -197,7 +246,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   @override
   void update(double dt) {
     super.update(dt);
-    
+
     if (game.isCutscenePlaying) {
       velocity.x = 0;
       _applyGravity(dt);
@@ -222,13 +271,18 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       return;
     }
     super.update(dt);
-    
+
     // Regenerate stamina (only when on ground and not performing any attacks)
-    if (!_isDead && _hitStopTimer <= 0 && isOnGround && !_isAttacking && !_isAirAttacking) {
-      game.playerState.stamina = (game.playerState.stamina + GameConfig.playerStaminaRegenRate * dt)
-          .clamp(0.0, game.playerState.maxStamina);
+    if (!_isDead &&
+        _hitStopTimer <= 0 &&
+        isOnGround &&
+        !_isAttacking &&
+        !_isAirAttacking) {
+      game.playerState.stamina =
+          (game.playerState.stamina + GameConfig.playerStaminaRegenRate * dt)
+              .clamp(0.0, game.playerState.maxStamina);
     }
-    
+
     // Tick attack input buffer
     if (_attackBufferTimer > 0) {
       _attackBufferTimer -= dt;
@@ -252,13 +306,16 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       final enemies = parent?.children.whereType<BaseEnemy>() ?? [];
       final playerRect = toRect();
       for (final enemy in enemies) {
-        if (!_plungeHitEnemies.contains(enemy) && playerRect.overlaps(enemy.toRect())) {
+        if (!_plungeHitEnemies.contains(enemy) &&
+            playerRect.overlaps(enemy.toRect())) {
           _plungeHitEnemies.add(enemy);
           final damage = game.playerState.effectiveDamage;
           final killed = enemy.takeDamage(damage, isPlunge: true);
           AudioManager.playSfx(AudioManager.sfxSwordHit1);
           if (game.playerState.isIndomitable) {
-            game.playerState.heal(damage * GameConfig.playerIndomitableLifestealRatio);
+            game.playerState.heal(
+              damage * GameConfig.playerIndomitableLifestealRatio,
+            );
           }
           _hitStopTimer = hitStopDuration; // Impact pause
           game.onScreenShake(4.0); // Shake screen
@@ -277,7 +334,11 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     _handleDodge(dt);
     _handleMovement(dt);
 
-    if (isOnGround && velocity.x != 0 && !_isAttacking && !_isDodging && !game.isCutscenePlaying) {
+    if (isOnGround &&
+        velocity.x != 0 &&
+        !_isAttacking &&
+        !_isDodging &&
+        !game.isCutscenePlaying) {
       AudioManager.playFootstep(dt);
     } else {
       AudioManager.resetFootstepTimer();
@@ -287,13 +348,14 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     _applyVelocity(dt);
     _updateAnimation();
     _wasOnGround = isOnGround;
-    isOnGround = false; // Assume we are in air until collision confirms otherwise
+    isOnGround =
+        false; // Assume we are in air until collision confirms otherwise
   }
 
   void _updateAnimation() {
     final anim = _animationComponent;
     if (anim == null) return;
-    
+
     // Handle flipping based on direction
     if (!_isDead) {
       if (_facingDirection == 1 && anim.scale.x < 0) {
@@ -302,7 +364,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         anim.scale.x *= -1;
       }
     }
-    
+
     // Determine current animation state
     if (_isDead) {
       anim.current = PlayerAnimationState.death;
@@ -332,12 +394,14 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       final grid = game.activeGrid;
       if (grid != null) {
         final leftFootX = (position.x / GameConfig.tileSize).floor();
-        final rightFootX = ((position.x + size.x) / GameConfig.tileSize).floor();
+        final rightFootX = ((position.x + size.x) / GameConfig.tileSize)
+            .floor();
         final footY = ((position.y + size.y) / GameConfig.tileSize).floor();
-        final isSafe = !grid.isLava(leftFootX, footY) &&
-                       !grid.isLava(rightFootX, footY) &&
-                       !grid.isSpike(leftFootX, footY) &&
-                       !grid.isSpike(rightFootX, footY);
+        final isSafe =
+            !grid.isLava(leftFootX, footY) &&
+            !grid.isLava(rightFootX, footY) &&
+            !grid.isSpike(leftFootX, footY) &&
+            !grid.isSpike(rightFootX, footY);
         if (isSafe) {
           lastSafePosition = position.clone();
         }
@@ -351,7 +415,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     moveLeft = keysPressed.contains(LogicalKeyboardKey.keyA);
     moveRight = keysPressed.contains(LogicalKeyboardKey.keyD);
     downPressed = keysPressed.contains(LogicalKeyboardKey.keyS);
-    
+
     if (event is KeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.keyW) {
         jumpPressed = true;
@@ -374,25 +438,40 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         if (currentPortal != null) {
           game.transitionThroughPortal(isReturn: currentPortal!.isReturn);
         } else if (currentExitPortal != null) {
-          final aliveEnemies = game.world.children.whereType<BaseEnemy>().where((e) => !e.isDead).toList();
+          final aliveEnemies = game.world.children
+              .whereType<BaseEnemy>()
+              .where((e) => !e.isDead)
+              .toList();
           final enemiesRemaining = aliveEnemies.length;
           if (enemiesRemaining == 0) {
             if (game.isTransitioning) {
-              print('[StruggleGame] Cannot exit level: Transition is already in progress (waiting for AI Architect generation to complete).');
+              print(
+                '[StruggleGame] Cannot exit level: Transition is already in progress (waiting for AI Architect generation to complete).',
+              );
             } else {
               final isMapPending = game.nextMapLayoutFuture != null;
               if (isMapPending) {
-                print('[StruggleGame] Exit portal interacted! Level cleared, but awaiting AI Architect to complete map layout generation for the next level.');
+                print(
+                  '[StruggleGame] Exit portal interacted! Level cleared, but awaiting AI Architect to complete map layout generation for the next level.',
+                );
               } else {
-                print('[StruggleGame] Exit portal interacted! Level cleared. Initiating immediate level transition...');
+                print(
+                  '[StruggleGame] Exit portal interacted! Level cleared. Initiating immediate level transition...',
+                );
               }
               game.onLevelComplete();
             }
           } else {
-            game.onScreenShake(2.0); // Mild camera shake to signal portal is locked
-            print('[StruggleGame] Cannot exit level: $enemiesRemaining enemies still alive!');
+            game.onScreenShake(
+              2.0,
+            ); // Mild camera shake to signal portal is locked
+            print(
+              '[StruggleGame] Cannot exit level: $enemiesRemaining enemies still alive!',
+            );
             for (final enemy in aliveEnemies) {
-              print('  - Alive Enemy: ${enemy.runtimeType} at coordinates (${enemy.position.x.toStringAsFixed(1)}, ${enemy.position.y.toStringAsFixed(1)})');
+              print(
+                '  - Alive Enemy: ${enemy.runtimeType} at coordinates (${enemy.position.x.toStringAsFixed(1)}, ${enemy.position.y.toStringAsFixed(1)})',
+              );
             }
           }
         } else if (currentGuardian != null) {
@@ -400,7 +479,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         }
       }
     }
-    
+
     return true;
   }
 
@@ -408,14 +487,14 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     if (_attackCooldownTimer > 0) _attackCooldownTimer -= dt;
     if (_dodgeCooldownTimer > 0) _dodgeCooldownTimer -= dt;
     if (_hurtTimer > 0) _hurtTimer -= dt;
-    
+
     // Coyote time
     if (isOnGround) {
       _coyoteTimer = _coyoteDuration;
     } else if (_coyoteTimer > 0) {
       _coyoteTimer -= dt;
     }
-    
+
     // Jump buffer
     if (jumpPressed) {
       _jumpBufferTimer = _jumpBufferDuration;
@@ -427,17 +506,22 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
   void _handleMovement(double dt) {
     if (_isDodging) return; // No manual movement during dodge
- 
+
+    // Flip direction without moving on slightly adjusting the joystick (useful when need to quickly look behind and attack without moving)
+    if (joystick.relativeDelta.x < -0.03) {
+      _facingDirection = -1;
+    } else if (joystick.relativeDelta.x > 0.03) {
+      _facingDirection = 1;
+    }
+
     // Horizontal movement
     if (_attackFreezeTimer > 0 || _isAirAttacking) {
       velocity.x = 0;
     } else {
       if (moveLeft || joystick.relativeDelta.x < -0.3) {
         velocity.x = -moveSpeed;
-        _facingDirection = -1;
       } else if (moveRight || joystick.relativeDelta.x > 0.3) {
         velocity.x = moveSpeed;
-        _facingDirection = 1;
       } else {
         velocity.x = 0;
       }
@@ -446,7 +530,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     // Drop-down logic
 
     final joystickDown = (joystick.relativeDelta.y > 0.90);
-    if ((downPressed || joystickDown) && isOnGround && _ignorePlatformsTimer <= 0) {
+    if ((downPressed || joystickDown) &&
+        isOnGround &&
+        _ignorePlatformsTimer <= 0) {
       _ignorePlatformsTimer = GameConfig.playerDropThroughDuration;
       isOnGround = false;
       velocity.y = GameConfig.playerDropThroughVelocity;
@@ -496,21 +582,24 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
     if (_isAttacking) {
       _attackTimer -= dt;
-      
+
       // Queue next combo hit if attacked during swing
       if (attackPressed && _comboStep < 2 && !_isDodging) {
         _comboQueued = true;
         attackPressed = false;
       }
-      
+
       if (_attackTimer <= 0) {
         _isAttacking = false;
-        
+
         // Reset animations so they play from the first frame next time
-        _animationComponent?.animationTickers?[PlayerAnimationState.attack]?.reset();
-        _animationComponent?.animationTickers?[PlayerAnimationState.attack2]?.reset();
-        _animationComponent?.animationTickers?[PlayerAnimationState.attack3]?.reset();
-        
+        _animationComponent?.animationTickers?[PlayerAnimationState.attack]
+            ?.reset();
+        _animationComponent?.animationTickers?[PlayerAnimationState.attack2]
+            ?.reset();
+        _animationComponent?.animationTickers?[PlayerAnimationState.attack3]
+            ?.reset();
+
         if (_comboQueued && _comboStep < 2) {
           final cost = GameConfig.playerStaminaAttackCost;
           if (game.playerState.stamina >= cost) {
@@ -519,8 +608,10 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
             _comboQueued = false;
             _isAttacking = true;
             _attackTimer = attackDuration;
-            _attackDamageDelayTimer = attackDuration * GameConfig.playerAttackDamageDelayRatio;
-            _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
+            _attackDamageDelayTimer =
+                attackDuration * GameConfig.playerAttackDamageDelayRatio;
+            _attackFreezeTimer =
+                attackDuration * GameConfig.playerAttackFreezeRatio;
             AudioManager.playPlayerAttack(_comboStep);
           } else {
             // Cancel queued combo because of insufficient stamina
@@ -543,7 +634,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         }
       }
     }
- 
+
     if (attackPressed && !_isDodging) {
       if (!isOnGround && !_isAirAttacking) {
         final cost = GameConfig.playerStaminaPlungeCost;
@@ -554,18 +645,24 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
           attackPressed = false;
           velocity.x = 0;
           velocity.y = 0;
-          _airHangTimer = GameConfig.playerPlungeDelay; // Use plunge delay config
+          _airHangTimer =
+              GameConfig.playerPlungeDelay; // Use plunge delay config
           AudioManager.playSfx(AudioManager.sfxPlungeAttack);
         }
-      } else if (isOnGround && !_isAttacking && _attackCooldownTimer <= 0 && _comboWindowTimer <= 0) {
+      } else if (isOnGround &&
+          !_isAttacking &&
+          _attackCooldownTimer <= 0 &&
+          _comboWindowTimer <= 0) {
         final cost = GameConfig.playerStaminaAttackCost;
         if (game.playerState.stamina >= cost) {
           game.playerState.stamina -= cost;
           _comboStep = 0;
           _isAttacking = true;
           _attackTimer = attackDuration;
-          _attackDamageDelayTimer = attackDuration * GameConfig.playerAttackDamageDelayRatio;
-          _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
+          _attackDamageDelayTimer =
+              attackDuration * GameConfig.playerAttackDamageDelayRatio;
+          _attackFreezeTimer =
+              attackDuration * GameConfig.playerAttackFreezeRatio;
           _comboQueued = false;
           attackPressed = false;
           AudioManager.playPlayerAttack(0);
@@ -578,8 +675,10 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
           _comboWindowTimer = 0;
           _isAttacking = true;
           _attackTimer = attackDuration;
-          _attackDamageDelayTimer = attackDuration * GameConfig.playerAttackDamageDelayRatio;
-          _attackFreezeTimer = attackDuration * GameConfig.playerAttackFreezeRatio;
+          _attackDamageDelayTimer =
+              attackDuration * GameConfig.playerAttackDamageDelayRatio;
+          _attackFreezeTimer =
+              attackDuration * GameConfig.playerAttackFreezeRatio;
           _comboQueued = false;
           attackPressed = false;
           AudioManager.playPlayerAttack(_comboStep);
@@ -597,7 +696,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       30,
       size.y - 10,
     );
-    
+
     // Check all enemies in the game world
     final enemies = parent?.children.whereType<BaseEnemy>() ?? [];
     for (final enemy in enemies) {
@@ -613,7 +712,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         final damage = game.playerState.effectiveDamage;
         final killed = enemy.takeDamage(damage);
         if (game.playerState.isIndomitable) {
-          game.playerState.heal(damage * GameConfig.playerIndomitableLifestealRatio);
+          game.playerState.heal(
+            damage * GameConfig.playerIndomitableLifestealRatio,
+          );
         }
         _hitStopTimer = hitStopDuration; // Hit-stop for impact feel
         game.onScreenShake(3.0); // Screen shake
@@ -640,7 +741,10 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       }
       return;
     }
-    if (dodgePressed && !_isDodging && _dodgeCooldownTimer <= 0 && !_isAttacking) {
+    if (dodgePressed &&
+        !_isDodging &&
+        _dodgeCooldownTimer <= 0 &&
+        !_isAttacking) {
       final cost = GameConfig.playerStaminaDodgeCost;
       if (game.playerState.stamina >= cost) {
         game.playerState.stamina -= cost;
@@ -658,7 +762,9 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         return; // Suspend gravity during hang-time
       }
       velocity.y += gravity * dt;
-      final maxV = _isAirAttacking ? GameConfig.playerPlungeSpeed : maxFallSpeed;
+      final maxV = _isAirAttacking
+          ? GameConfig.playerPlungeSpeed
+          : maxFallSpeed;
       velocity.y = velocity.y.clamp(-1000, maxV);
     }
   }
@@ -677,7 +783,8 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
         if (nextTileY > currentTileY) {
           final leftFootX = (position.x / GameConfig.tileSize).floor();
-          final rightFootX = ((position.x + size.x) / GameConfig.tileSize).floor();
+          final rightFootX = ((position.x + size.x) / GameConfig.tileSize)
+              .floor();
 
           for (int ty = currentTileY + 1; ty <= nextTileY; ty++) {
             if (grid.isSolid(leftFootX, ty) || grid.isSolid(rightFootX, ty)) {
@@ -702,7 +809,10 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
   }
 
   @override
-  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+  void onCollisionStart(
+    Set<Vector2> intersectionPoints,
+    PositionComponent other,
+  ) {
     super.onCollisionStart(intersectionPoints, other);
     if (other is PlatformBlock) {
       _resolveBlockCollision(other);
@@ -715,7 +825,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       other.removeFromParent();
       game.playerState.heal(other.healAmount);
       AudioManager.playSfx(AudioManager.sfxHeart);
-      
+
       final tileX = (other.initialPosition.x / GameConfig.tileSize).round();
       final tileY = (other.initialPosition.y / GameConfig.tileSize).round();
       final key = '${game.gameState.currentLevel}_pickup_${tileX}_$tileY';
@@ -733,16 +843,15 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     } else if (other is LostWillPickup && !other.collected) {
       other.collected = true;
       other.removeFromParent();
-      
+
       // Restore lost willpower
       game.playerState.willpower += other.willpowerAmount;
-      
+
       // Erase the bloodstain completely from the player state
       game.playerState.lostWillpower = 0;
       game.playerState.lostWillX = null;
       game.playerState.lostWillY = null;
       game.playerState.lostWillLevelId = null;
-
     }
   }
 
@@ -767,11 +876,15 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
     final overlapRight = blockRect.right - playerRect.left;
     final overlapTop = playerRect.bottom - blockRect.top;
     final overlapBottom = blockRect.bottom - playerRect.top;
-    
+
     // Find minimum overlap to determine collision direction
-    final minOverlap = [overlapLeft, overlapRight, overlapTop, overlapBottom]
-        .reduce((a, b) => a < b ? a : b);
-        
+    final minOverlap = [
+      overlapLeft,
+      overlapRight,
+      overlapTop,
+      overlapBottom,
+    ].reduce((a, b) => a < b ? a : b);
+
     if (block.isJumpThrough) {
       if (_ignorePlatformsTimer > 0) return;
       if (minOverlap == overlapTop && velocity.y >= 0) {
@@ -792,7 +905,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
       }
       return; // Ignore other collisions (bottom, sides)
     }
-    
+
     if (minOverlap == overlapTop && velocity.y >= 0) {
       // Landing on top
       position.y = block.position.y - size.y;
@@ -845,39 +958,45 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
 
   void _die() {
     if (_isDead) return;
-    
+
     _isDead = true;
     _respawnTimer = respawnDelay;
     velocity = Vector2.zero();
     game.playerState.health = 0;
     velocity.x = 0; // Stop horizontal movement on death
-    
+
     game.playerState.deathCount++;
     game.playerState.deathsThisLevel++;
   }
 
   void _performPlungeSplash() {
     final splashArea = Rect.fromCenter(
-      center: Offset(position.x + size.x / 2, position.y + size.y), // centered at player feet
+      center: Offset(
+        position.x + size.x / 2,
+        position.y + size.y,
+      ), // centered at player feet
       width: GameConfig.playerPlungeSplashRadius * 2,
       height: 60,
     );
-    
+
     final enemies = parent?.children.whereType<BaseEnemy>() ?? [];
     for (final enemy in enemies) {
       if (splashArea.overlaps(enemy.toRect())) {
         final damage = game.playerState.isIndomitable
-            ? GameConfig.playerPlungeSplashDamage * GameConfig.playerIndomitableDamageMultiplier
+            ? GameConfig.playerPlungeSplashDamage *
+                  GameConfig.playerIndomitableDamageMultiplier
             : GameConfig.playerPlungeSplashDamage;
         final killed = enemy.takeDamage(damage);
-        
+
         // As requested: play impact sound ONLY for the initial impact
         if (!_plungeHitEnemies.contains(enemy)) {
           AudioManager.playSfx(AudioManager.sfxSwordHit1);
         }
 
         if (game.playerState.isIndomitable) {
-          game.playerState.heal(damage * GameConfig.playerIndomitableLifestealRatio);
+          game.playerState.heal(
+            damage * GameConfig.playerIndomitableLifestealRatio,
+          );
         }
         if (killed) {
           game.playerState.enemiesKilled++;
@@ -887,7 +1006,7 @@ class Player extends PositionComponent with CollisionCallbacks, KeyboardHandler,
         }
       }
     }
-    
+
     _hitStopTimer = hitStopDuration * 2;
     game.onScreenShake(8.0);
     _attackCooldownTimer = attackCooldown;

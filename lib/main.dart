@@ -179,7 +179,7 @@ Stack(
                 ),
               ],
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
 
             // Right column of the cluster: JUMP (top) and ATK (bottom)
             Column(
@@ -192,7 +192,7 @@ Stack(
                   color: const Color(0xFF44FF44),
                   large: true, // Matching size
                 ),
-                const SizedBox(height: 6), // Tight gap between Jump and Attack
+                const SizedBox(height: 10), // Increased gap for larger buttons
                 _ControlButton(
                   icon: Icons.flash_on,
                   label: 'ATK',
@@ -233,7 +233,7 @@ class _ControlButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = large ? 64.0 : 52.0;
+    final size = large ? 80.0 : 52.0;
 
     return GestureDetector(
       onTapDown: (_) => onDown(),
@@ -250,13 +250,13 @@ class _ControlButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color.withAlpha(200), size: large ? 28 : 22),
+            Icon(icon, color: color.withAlpha(200), size: large ? 36 : 22),
             if (label != null)
               Text(
                 label!,
                 style: TextStyle(
                   color: color.withAlpha(180),
-                  fontSize: 8,
+                  fontSize: large ? 10 : 8,
                   fontWeight: FontWeight.bold,
                 ),
               ),
